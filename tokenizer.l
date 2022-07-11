@@ -1,6 +1,13 @@
+LETTER_ [a-zA-Z_]
+DIGIT [0-9]
+
 %%
 [ \t\r\n]+ { /* ignore spaces */ }
 [/][/].* { /* ignore comment */ }
-[0-9]+ { int ival = atoi(yytext); yylval = SemanticValue(new IntConst(ival)); return INTEGER_CONSTANT; }
+{DIGIT}+ { int ival = atoi(yytext); yylval = SemanticValue(new IntConst(ival)); return INTEGER_CONSTANT; }
+
+while { return WHILE; }
+{LETTER_}+({LETTER_}|{DIGIT})* { yylval = SemanticValue(yytext); return IDENTIFIER; }
+
 . { return yytext[0]; }
 %%

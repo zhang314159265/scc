@@ -3,6 +3,7 @@
 #include <memory>
 #include <fmt/format.h>
 #include "ast/node.h"
+#include "label.h"
 
 namespace ast {
 
@@ -23,6 +24,11 @@ class ExprBase : public Node {
     throw std::runtime_error(
       fmt::format("Please override getAddrStr method in subclass if the subclass can be an address in IR: {}", typeid(*this).name()));
   }
+
+  virtual void jumping(Emitter* emitter, Label* trueLabel, Label* falseLabel) {
+    throw std::runtime_error(
+      fmt::format("Please override jumping method in subclass: {}", typeid(*this).name()));
+  }
 };
 
 // The expression node representing a list of assignment_expression
@@ -35,6 +41,7 @@ class CommaExpr : public ExprBase, public NodeList<AssignExpr> {
 		dumpWithTag("EXPR", depth);
 	}
   std::unique_ptr<ExprBase> gen(Emitter* emitter) override;
+  void jumping(Emitter* emitter, Label* trueLabel, Label* falseLabel) override;
 };
 
 class AssignExpr : public ExprBase {
@@ -85,6 +92,18 @@ class Temp : public ExprBase {
   }
  private:
   int temp_id_;
+};
+
+class Id : public ExprBase {
+ public:
+  explicit Id(const std::string& str) : str_(str) { }
+  void dump(int depth=0) override {
+    Node::indent(depth);
+    std::cout << "ID " << str_ << std::endl;
+  }
+  void jumping(Emitter* emitter, Label* trueLabel, Label* falseLabel) override;
+ private:
+  std::string str_;
 };
 
 };

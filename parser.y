@@ -1,10 +1,12 @@
 %{
 #include <cassert>
 #include <memory>
+#include <string>
 #include "ast/node.h"
 #include "ast/stmt.h"
 #include "ast/expr.h"
 #include "emitter.h"
+#include "label.h"
 
 using namespace ast;
 
@@ -17,12 +19,14 @@ int yyparse();
 enum {
   SV_NONE,
   SV_ASTNODE,
+  SV_STR,
 };
 
 class SemanticValue {
  public:
   explicit SemanticValue() : tag_(SV_NONE) { }
   explicit SemanticValue(Node* astNode) : tag_(SV_ASTNODE), astNode_(astNode) { }
+  explicit SemanticValue(const std::string& str) : tag_(SV_STR), str_(str) { }
 
   SemanticValue& operator=(std::unique_ptr<Node>&& node) {
      std::unique_ptr<Node> copy = std::move(node);
@@ -35,12 +39,17 @@ class SemanticValue {
     assert(tag_ == SV_ASTNODE);
     return astNode_;
   }
+  const std::string& str() const {
+    assert(tag_ == SV_STR);
+    return str_;
+  }
 
  private:
   int tag_;
   union {
     Node* astNode_;
   };
+  std::string str_; // can not put std::string inside union. So put it outside..
 };
 
 namespace {
@@ -83,6 +92,14 @@ static SemanticValue createBinOp(const std::string& opstr, SemanticValue lhs, Se
     rhs.astNode()->to<ExprBase>());
   return SemanticValue(resNode.release());
 }
+
+static SemanticValue createWhileNode(SemanticValue sv_expr, SemanticValue sv_stmt) {
+  auto while_node = new While(
+    sv_expr.astNode()->to<ExprBase>(),
+    sv_stmt.astNode()->to<Stmt>());
+  return SemanticValue(while_node);
+}
+
 }
 
 #define YYSTYPE SemanticValue
@@ -90,14 +107,23 @@ static SemanticValue createBinOp(const std::string& opstr, SemanticValue lhs, Se
 %}
 
 %token INTEGER_CONSTANT
+%token WHILE
+// can not create token named ID since the generated parser will contains a line like
+// '#define ID 260'
+// While the fmtlib has something like:
+//   template <typename Context, typename ID>
+// The ID parameter name collides with the ID macro and cause weird compiling errors.
+%token IDENTIFIER
 
 %%
 
 root_symbol:
     translation_unit {
       Emitter emitter;
+      Label next;
       $1.astNode()->dump();
-      $1.astNode()->to<Stmt>()->emit(&emitter);
+      $1.astNode()->to<Stmt>()->emit(&emitter, &next);
+      next.emit_if_used(&emitter);
     }
   ;
 
@@ -138,8 +164,15 @@ statement_list:
   ;
 
 statement:
-    compound_statement
-  | expression_statement
+    expression_statement
+  | compound_statement
+  | iteration_statement
+  ;
+
+iteration_statement:
+    WHILE '(' expression ')' statement {
+      $$ = createWhileNode($3, $5);
+    } 
   ;
 
 expression_statement:
@@ -209,6 +242,9 @@ cast_expression:
 
 unary_expression:
     INTEGER_CONSTANT
+  | IDENTIFIER {
+      $$ = SemanticValue(new Id($1.str()));
+    }
   ;
 
 %%
