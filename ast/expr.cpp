@@ -56,4 +56,29 @@ std::unique_ptr<ExprBase> AssignExpr::gen(Emitter* emitter) {
       rhs_addr->getAddrStr()));
   return rhs_addr;
 }
+
+std::unique_ptr<ExprBase> IncDec::gen(Emitter* emitter) {
+  std::unique_ptr<ExprBase> ret = nullptr;
+  if (is_pre_) {
+    // return a clone of child_ . Theoretically we can
+    // 1. either make the return value a shared_ptr
+    // 2. or add API to clone an expression.
+    // We pick latter for now.
+    ret = child_->clone();
+  } else {
+    // return a Temp storing the original value
+    ret = emitter->createTemp();
+
+    // emit the assignment
+    emitter->emit(
+      fmt::format("{} = {}",
+        ret->getAddrStr(),
+        child_->getAddrStr())); // TODO support cases like array element/pointer deference
+  }
+  // TODO need handle pointer inc/dec specially considering type size
+  emitter->emit(
+    fmt::format("{} = {} {} 1", child_->getAddrStr(), child_->getAddrStr(), opstr()));
+  return ret;
+}
+
 }

@@ -29,6 +29,11 @@ class ExprBase : public Node {
     throw std::runtime_error(
       fmt::format("Please override jumping method in subclass: {}", typeid(*this).name()));
   }
+
+  virtual std::unique_ptr<ExprBase> clone() {
+    throw std::runtime_error(
+      fmt::format("Please override clone method in subclass: {}", typeid(*this).name()));
+  }
 };
 
 // The expression node representing a list of assignment_expression
@@ -121,8 +126,31 @@ class Id : public ExprBase {
   std::string getAddrStr() override {
     return str_;
   }
+  std::unique_ptr<ExprBase> clone() override {
+    return std::make_unique<Id>(str_);
+  }
  private:
   std::string str_;
+};
+
+class IncDec : public ExprBase {
+ public:
+  explicit IncDec(ExprBase* child, bool is_inc, bool is_pre)
+    : child_(child), is_inc_(is_inc), is_pre_(is_pre) { }
+  void dump(int depth=0) override {
+    Node::indent(depth);
+    std::cout << (is_pre_ ? "PRE" : "POST") << " " << (is_inc_ ? "INC" : "DEC") << std::endl;
+    child_->dump(depth + 1);
+  }
+
+  std::unique_ptr<ExprBase> gen(Emitter* emitter) override;
+ private:
+  std::string opstr() const {
+    return is_inc_ ? "+" : "-";
+  }
+  std::unique_ptr<ExprBase> child_;
+  bool is_inc_;
+  bool is_pre_;
 };
 
 };

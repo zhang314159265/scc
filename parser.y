@@ -116,6 +116,14 @@ static SemanticValue createAssign(SemanticValue lhs, SemanticValue rhs) {
   return SemanticValue(assign_expr);
 }
 
+static SemanticValue createIncDecNode(SemanticValue child, bool is_inc, bool is_pre) {
+  auto inc_dec = new IncDec(
+    child.astNode()->to<ExprBase>(),
+    is_inc,
+    is_pre);
+  return SemanticValue(inc_dec);
+}
+
 }
 
 #define YYSTYPE SemanticValue
@@ -131,6 +139,8 @@ static SemanticValue createAssign(SemanticValue lhs, SemanticValue rhs) {
 //   template <typename Context, typename ID>
 // The ID parameter name collides with the ID macro and cause weird compiling errors.
 %token IDENTIFIER
+%token INC
+%token DEC
 
 %%
 
@@ -265,6 +275,26 @@ cast_expression:
   ;
 
 unary_expression:
+    postfix_expression
+  | INC unary_expression {
+    $$ = createIncDecNode($2, true, true);
+  }
+  | DEC unary_expression {
+    $$ = createIncDecNode($2, false, true);
+  }
+  ;
+
+postfix_expression:
+    primary_expression
+  | postfix_expression INC {
+      $$ = createIncDecNode($1, true, false);
+    }
+  | postfix_expression DEC {
+      $$ = createIncDecNode($1, false, false);
+    }
+  ;
+
+primary_expression:
     INTEGER_CONSTANT
   | IDENTIFIER {
       $$ = SemanticValue(new Id($1.str()));
