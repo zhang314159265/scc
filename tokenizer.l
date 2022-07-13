@@ -6,6 +6,7 @@ DIGIT [0-9]
 [/][/].* { /* ignore comment */ }
 {DIGIT}+ { int ival = atoi(yytext); yylval = SemanticValue(new IntConst(ival)); return INTEGER_CONSTANT; }
 
+for { return FOR; }
 while { return WHILE; }
 {LETTER_}+({LETTER_}|{DIGIT})* { yylval = SemanticValue(yytext); return IDENTIFIER; }
 

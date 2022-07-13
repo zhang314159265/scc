@@ -11,6 +11,9 @@ class StmtList;
 class ExprStmt;
 class While;
 
+// TODO rename Stmt class to StmtBase
+#define StmtBase Stmt
+
 // baseclass for all statements
 class Stmt : public Node {
  public:
@@ -93,6 +96,61 @@ class While : public Stmt {
  private:
   std::unique_ptr<ExprBase> expr_;
   std::unique_ptr<Stmt> stmt_;
+};
+
+class For : public Stmt {
+ public:
+  explicit For(ExprBase* init, ExprBase* cond, ExprBase* post, StmtBase* body)
+    : init_(init), cond_(cond), post_(post), body_(body) { }
+
+  void dump(int depth=0) override {
+    Node::indent(depth);
+    std::cout << "FOR" << std::endl;
+    if (init_) {
+      init_->dump(depth + 1);
+    } else {
+      Node::indent(depth + 1);
+      std::cout << "NO INIT" << std::endl;
+    }
+    if (cond_) {
+      cond_->dump(depth + 1);
+    } else {
+      Node::indent(depth + 1);
+      std::cout << "NO COND" << std::endl;
+    }
+    if (post_) {
+      post_->dump(depth + 1);
+    } else {
+      Node::indent(depth + 1);
+      std::cout << "NO POST" << std::endl;
+    }
+    body_->dump(depth + 1);
+  }
+
+  void emit(Emitter* emitter, Label* next) override {
+    if (init_) {
+      init_->gen(emitter);
+    }
+    Label loopbegin;
+    emitter->emitLabel(&loopbegin);
+    if (cond_) {
+      cond_->jumping(emitter, nullptr, next);
+    } else {
+      // always fall thru if cond_ is missing
+    }
+
+    body_->emit(emitter, next);
+    if (post_) {
+      post_->gen(emitter);
+    }
+    // jump to loop begin
+    emitter->emitJump(&loopbegin);
+  }
+ private:
+  std::unique_ptr<ExprBase> init_; // can be nullptr
+  std::unique_ptr<ExprBase> cond_; // can be nullptr
+  std::unique_ptr<ExprBase> post_; // can be nullptr
+  std::unique_ptr<StmtBase> body_;
 };
 
 }

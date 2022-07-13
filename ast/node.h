@@ -33,6 +33,11 @@ class Node {
 		assert(ptr); // make sure the type conversion succeed
 		return ptr;
 	}
+
+  template <typename T>
+  static T* to(Node* ptr) {
+    return ptr == nullptr ? nullptr : ptr->to<T>();
+  }
  private:
 };
 

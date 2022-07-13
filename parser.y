@@ -100,6 +100,14 @@ static SemanticValue createWhileNode(SemanticValue sv_expr, SemanticValue sv_stm
   return SemanticValue(while_node);
 }
 
+static SemanticValue createForNode(SemanticValue init_expr, SemanticValue cond_expr, SemanticValue post_expr, SemanticValue stmt) {
+  auto init = Node::to<ExprBase>(init_expr.astNode());
+  auto cond = Node::to<ExprBase>(cond_expr.astNode());
+  auto post = Node::to<ExprBase>(post_expr.astNode());
+  auto forNode = new For(init, cond, post, stmt.astNode()->to<Stmt>());
+  return SemanticValue(forNode);
+}
+
 static SemanticValue createAssign(SemanticValue lhs, SemanticValue rhs) {
   auto assign_expr = new AssignExpr(
     lhs.astNode()->to<ExprBase>(),
@@ -115,6 +123,7 @@ static SemanticValue createAssign(SemanticValue lhs, SemanticValue rhs) {
 %}
 
 %token INTEGER_CONSTANT
+%token FOR
 %token WHILE
 // can not create token named ID since the generated parser will contains a line like
 // '#define ID 260'
@@ -180,7 +189,10 @@ statement:
 iteration_statement:
     WHILE '(' expression ')' statement {
       $$ = createWhileNode($3, $5);
-    } 
+    }
+  | FOR '(' opt_expression ';' opt_expression ';' opt_expression ')' statement {
+      $$ = createForNode($3, $5, $7, $9);
+    }
   ;
 
 expression_statement:
