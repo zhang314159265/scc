@@ -100,6 +100,14 @@ static SemanticValue createWhileNode(SemanticValue sv_expr, SemanticValue sv_stm
   return SemanticValue(while_node);
 }
 
+static SemanticValue createAssign(SemanticValue lhs, SemanticValue rhs) {
+  auto assign_expr = new AssignExpr(
+    lhs.astNode()->to<ExprBase>(),
+    rhs.astNode()->to<ExprBase>()
+  );
+  return SemanticValue(assign_expr);
+}
+
 }
 
 #define YYSTYPE SemanticValue
@@ -197,8 +205,12 @@ expression:
     }
   ; 
 
+// TODO
 assignment_expression:
     conditional_expression
+  | unary_expression '=' assignment_expression {
+      $$ = createAssign($1, $3);
+    }
   ;
 
 conditional_expression:

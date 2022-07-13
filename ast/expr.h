@@ -45,6 +45,19 @@ class CommaExpr : public ExprBase, public NodeList<AssignExpr> {
 };
 
 class AssignExpr : public ExprBase {
+ public:
+  explicit AssignExpr(ExprBase* lhs, ExprBase* rhs) : lhs_(lhs), rhs_(rhs) { }
+
+  void dump(int depth=0) override {
+    Node::indent(depth);
+    std::cout << "ASSIGN" << std::endl;
+    lhs_->dump(depth + 1);
+    rhs_->dump(depth + 1);
+  }
+
+  std::unique_ptr<ExprBase> gen(Emitter* emitter) override;
+ private:
+  std::unique_ptr<ExprBase> lhs_, rhs_;
 };
 
 class BinOpExpr : public ExprBase {
@@ -102,6 +115,12 @@ class Id : public ExprBase {
     std::cout << "ID " << str_ << std::endl;
   }
   void jumping(Emitter* emitter, Label* trueLabel, Label* falseLabel) override;
+  std::unique_ptr<ExprBase> gen(Emitter* emitter) override {
+    return std::make_unique<Id>(str_);
+  }
+  std::string getAddrStr() override {
+    return str_;
+  }
  private:
   std::string str_;
 };

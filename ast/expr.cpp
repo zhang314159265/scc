@@ -47,4 +47,13 @@ void Id::jumping(Emitter* emitter, Label* trueLabel, Label* falseLabel) {
   }
 }
 
+std::unique_ptr<ExprBase> AssignExpr::gen(Emitter* emitter) {
+  // TODO we should check lhs represents lvalue
+  auto rhs_addr = rhs_->gen(emitter);
+  emitter->emit(
+    fmt::format("{} = {}",
+      lhs_->getAddrStr(),
+      rhs_addr->getAddrStr()));
+  return rhs_addr;
+}
 }
