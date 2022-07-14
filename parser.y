@@ -124,6 +124,13 @@ static SemanticValue createIncDecNode(SemanticValue child, bool is_inc, bool is_
   return SemanticValue(inc_dec);
 }
 
+static SemanticValue createArrayAccessNode(SemanticValue array, SemanticValue index) {
+  return SemanticValue(new ArrayAccess(
+    array.astNode()->to<ExprBase>(),
+    index.astNode()->to<ExprBase>()
+  ));
+}
+
 }
 
 #define YYSTYPE SemanticValue
@@ -286,6 +293,9 @@ unary_expression:
 
 postfix_expression:
     primary_expression
+  | postfix_expression '[' expression ']' {
+      $$ = createArrayAccessNode($1, $3);
+    }
   | postfix_expression INC {
       $$ = createIncDecNode($1, true, false);
     }

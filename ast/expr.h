@@ -15,12 +15,16 @@ class BinOpExpr;
 // baseclass of all expressions
 class ExprBase : public Node {
  public:
+  // generate rvalue
   virtual std::unique_ptr<ExprBase> gen(Emitter* emitter) {
     throw std::runtime_error(
       fmt::format("Please override gen method in subclass: {}", typeid(*this).name()));
   }
 
-  virtual std::string getAddrStr() {
+  // generate lvalue for ArrayReference
+  // Only some expression like ArrayAccess need use emitter to gen
+  // code that calculates offset.
+  virtual std::string getAddrStr(Emitter* emitter) {
     throw std::runtime_error(
       fmt::format("Please override getAddrStr method in subclass if the subclass can be an address in IR: {}", typeid(*this).name()));
   }
@@ -43,7 +47,7 @@ class CommaExpr : public ExprBase, public NodeList<AssignExpr> {
 	using ElemType = AssignExpr;
 
 	void dump(int depth=0) override {
-		dumpWithTag("EXPR", depth);
+		dumpWithTag("COMMA EXPR", depth);
 	}
   std::unique_ptr<ExprBase> gen(Emitter* emitter) override;
   void jumping(Emitter* emitter, Label* trueLabel, Label* falseLabel) override;
@@ -93,7 +97,7 @@ class IntConst : public ExprBase {
   std::unique_ptr<ExprBase> gen(Emitter* emitter) override {
     return std::make_unique<IntConst>(ival_);
   }
-  std::string getAddrStr() override {
+  std::string getAddrStr(Emitter* emitter) override {
     return fmt::format("{}", ival_);
   }
  private:
@@ -105,7 +109,7 @@ class Temp : public ExprBase {
   explicit Temp(int temp_id) : temp_id_(temp_id) {
   }
 
-  std::string getAddrStr() override {
+  std::string getAddrStr(Emitter* emitter) override {
     return fmt::format("t{}", temp_id_);
   }
  private:
@@ -123,7 +127,7 @@ class Id : public ExprBase {
   std::unique_ptr<ExprBase> gen(Emitter* emitter) override {
     return std::make_unique<Id>(str_);
   }
-  std::string getAddrStr() override {
+  std::string getAddrStr(Emitter* emitter) override {
     return str_;
   }
   std::unique_ptr<ExprBase> clone() override {
@@ -151,6 +155,22 @@ class IncDec : public ExprBase {
   std::unique_ptr<ExprBase> child_;
   bool is_inc_;
   bool is_pre_;
+};
+
+class ArrayAccess : public ExprBase {
+ public:
+  explicit ArrayAccess(ExprBase* array, ExprBase* index) : array_(array), index_(index) { }
+
+  void dump(int depth=0) override {
+    Node::indent(depth);
+    std::cout << "ARRAY ACCESS" << std::endl;
+    array_->dump(depth + 1);
+    index_->dump(depth + 1);
+  }
+  std::unique_ptr<ExprBase> gen(Emitter* emitter) override;
+  std::string getAddrStr(Emitter* emitter) override;
+ private:
+  std::unique_ptr<ExprBase> array_, index_;
 };
 
 };

@@ -26,10 +26,10 @@ std::unique_ptr<ExprBase> BinOpExpr::gen(Emitter* emitter) {
   auto temp = emitter->createTemp();
   emitter->emit(
     fmt::format("{} = {} {} {}",
-      temp->getAddrStr(),
-      lhs_addr->getAddrStr(),
+      temp->getAddrStr(emitter),
+      lhs_addr->getAddrStr(emitter),
       opstr_,
-      rhs_addr->getAddrStr()));
+      rhs_addr->getAddrStr(emitter)));
   return temp;
 }
 
@@ -52,8 +52,8 @@ std::unique_ptr<ExprBase> AssignExpr::gen(Emitter* emitter) {
   auto rhs_addr = rhs_->gen(emitter);
   emitter->emit(
     fmt::format("{} = {}",
-      lhs_->getAddrStr(),
-      rhs_addr->getAddrStr()));
+      lhs_->getAddrStr(emitter),
+      rhs_addr->getAddrStr(emitter)));
   return rhs_addr;
 }
 
@@ -72,13 +72,42 @@ std::unique_ptr<ExprBase> IncDec::gen(Emitter* emitter) {
     // emit the assignment
     emitter->emit(
       fmt::format("{} = {}",
-        ret->getAddrStr(),
-        child_->getAddrStr())); // TODO support cases like array element/pointer deference
+        ret->getAddrStr(emitter),
+        child_->getAddrStr(emitter))); // TODO support cases like array element/pointer deference
   }
   // TODO need handle pointer inc/dec specially considering type size
   emitter->emit(
-    fmt::format("{} = {} {} 1", child_->getAddrStr(), child_->getAddrStr(), opstr()));
+    fmt::format("{} = {} {} 1", child_->getAddrStr(emitter), child_->getAddrStr(emitter), opstr()));
   return ret;
+}
+
+std::unique_ptr<ExprBase> ArrayAccess::gen(Emitter* emitter) {
+  // TODO: assume element size to be 4 here. Get element type from symbol table
+  // instead.
+  auto index_rvalue = index_->gen(emitter);
+  auto temp = emitter->createTemp();
+  emitter->emit(
+    fmt::format("{} = {} * 4",
+      temp->getAddrStr(emitter),
+      index_rvalue->getAddrStr(emitter)));
+
+  auto ret = emitter->createTemp();
+  emitter->emit(
+    fmt::format("{} = {}[{}]", ret->getAddrStr(emitter), array_->getAddrStr(emitter), temp->getAddrStr(emitter)));
+  return ret;
+}
+
+std::string ArrayAccess::getAddrStr(Emitter* emitter) {
+  // TODO: assume element size to be 4 here. Get element type from symbol table
+  // instead.
+  auto index_rvalue = index_->gen(emitter);
+  auto temp = emitter->createTemp();
+  emitter->emit(
+    fmt::format("{} = {} * 4",
+      temp->getAddrStr(emitter),
+      index_rvalue->getAddrStr(emitter)));
+
+  return fmt::format("{}[{}]", array_->getAddrStr(emitter), temp->getAddrStr(emitter));
 }
 
 }
