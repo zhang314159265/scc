@@ -23,6 +23,40 @@ enum {
   SV_ASTNODE,
   SV_STR,
   SV_TYPE,
+  SV_DECLAUX,
+};
+
+/*
+ * An auxiliary class to parse declaration.
+ */
+class DeclAux {
+ public:
+  explicit DeclAux(const std::string& name) : name_(name) { }
+  void setBaseType(Type* baseType) {
+    baseType_ = baseType;
+  }
+  void process() {
+    assert(baseType_ != nullptr);
+    Symtab::cur()->reg(name_, type());
+  }
+
+  Type* type() {
+    if (dims_.size() > 0) {
+      // TODO avoid mem leak
+      return new ArrayType(baseType_, dims_);
+    } else {
+      // basic type
+      return baseType_;
+    }
+  }
+
+  void addDim(int newDim) {
+    dims_.push_back(newDim);
+  }
+ private:
+  std::string name_;
+  Type* baseType_ = nullptr;
+  std::vector<int> dims_;
 };
 
 class SemanticValue {
@@ -31,6 +65,7 @@ class SemanticValue {
   explicit SemanticValue(Node* astNode) : tag_(SV_ASTNODE), astNode_(astNode) { }
   explicit SemanticValue(const std::string& str) : tag_(SV_STR), str_(str) { }
   explicit SemanticValue(Type* type) : tag_(SV_TYPE), type_(type) { }
+  explicit SemanticValue(DeclAux* declAux) : tag_(SV_DECLAUX), declAux_(declAux) { }
 
   SemanticValue& operator=(std::unique_ptr<Node>&& node) {
      std::unique_ptr<Node> copy = std::move(node);
@@ -43,6 +78,7 @@ class SemanticValue {
     assert(tag_ == SV_ASTNODE);
     return astNode_;
   }
+
   const std::string& str() const {
     assert(tag_ == SV_STR);
     return str_;
@@ -53,11 +89,17 @@ class SemanticValue {
     return type_;
   }
 
+  DeclAux* declAux() {
+    assert(tag_ == SV_DECLAUX);
+    return declAux_;
+  }
+
  private:
   int tag_;
   union {
     Node* astNode_;
     Type* type_;
+    DeclAux* declAux_;
   };
   std::string str_; // can not put std::string inside union. So put it outside..
 };
@@ -141,6 +183,20 @@ static SemanticValue createArrayAccessNode(SemanticValue array, SemanticValue in
   ));
 }
 
+// Will release the memory for declAux before returning.
+void processDeclaration(Type* baseType, DeclAux* declAux) {
+  declAux->setBaseType(baseType);
+  declAux->process();
+  delete declAux;
+}
+
+SemanticValue addDimension(SemanticValue declAux, SemanticValue newDim) {
+  auto* icNode = dynamic_cast<IntConst*>(newDim.astNode());
+  assert(icNode);
+  declAux.declAux()->addDim(icNode->ival());
+  return declAux;
+}
+
 }
 
 #define YYSTYPE SemanticValue
@@ -210,8 +266,17 @@ declaration_list:
 
 // TODO simpifiled for now
 declaration:
-    type_specifier IDENTIFIER ';' {
-      Symtab::cur()->reg($2.str(), $1.type());
+    type_specifier direct_declarator ';' {
+      processDeclaration($1.type(), $2.declAux());
+    }
+  ;
+
+direct_declarator:
+    IDENTIFIER {
+      $$ = SemanticValue(new DeclAux($1.str()));
+    }
+  | direct_declarator '[' INTEGER_CONSTANT ']' {
+      $$ = addDimension($1, $3);
     }
   ;
 

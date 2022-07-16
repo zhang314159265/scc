@@ -100,6 +100,7 @@ class IntConst : public ExprBase {
   std::string getAddrStr(Emitter* emitter) override {
     return fmt::format("{}", ival_);
   }
+  int ival() const { return ival_; }
  private:
   int ival_;
 };
