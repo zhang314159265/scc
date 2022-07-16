@@ -7,6 +7,8 @@
 #include "ast/expr.h"
 #include "emitter.h"
 #include "label.h"
+#include "type.h"
+#include "symtab.h"
 
 using namespace ast;
 
@@ -20,6 +22,7 @@ enum {
   SV_NONE,
   SV_ASTNODE,
   SV_STR,
+  SV_TYPE,
 };
 
 class SemanticValue {
@@ -27,6 +30,7 @@ class SemanticValue {
   explicit SemanticValue() : tag_(SV_NONE) { }
   explicit SemanticValue(Node* astNode) : tag_(SV_ASTNODE), astNode_(astNode) { }
   explicit SemanticValue(const std::string& str) : tag_(SV_STR), str_(str) { }
+  explicit SemanticValue(Type* type) : tag_(SV_TYPE), type_(type) { }
 
   SemanticValue& operator=(std::unique_ptr<Node>&& node) {
      std::unique_ptr<Node> copy = std::move(node);
@@ -44,10 +48,16 @@ class SemanticValue {
     return str_;
   }
 
+  Type* type() const {
+    assert(tag_ == SV_TYPE);
+    return type_;
+  }
+
  private:
   int tag_;
   union {
     Node* astNode_;
+    Type* type_;
   };
   std::string str_; // can not put std::string inside union. So put it outside..
 };
@@ -149,6 +159,10 @@ static SemanticValue createArrayAccessNode(SemanticValue array, SemanticValue in
 %token INC
 %token DEC
 
+// types
+%token TK_INT
+%token TK_DOUBLE
+
 %%
 
 root_symbol:
@@ -158,6 +172,7 @@ root_symbol:
       $1.astNode()->dump();
       $1.astNode()->to<Stmt>()->emit(&emitter, &next);
       next.emit_if_used(&emitter);
+      Symtab::cur()->dump();
     }
   ;
 
@@ -178,8 +193,34 @@ function_definition:
 
 // TODO support declarations
 compound_statement:
-    '{' opt_statement_list '}' {
-      $$ = $2;
+    '{' opt_declaration_list opt_statement_list '}' {
+      $$ = $3;
+    }
+  ;
+
+opt_declaration_list:
+    declaration_list
+  | /* empty */
+  ;
+
+declaration_list:
+    declaration
+  | declaration_list declaration
+  ;
+
+// TODO simpifiled for now
+declaration:
+    type_specifier IDENTIFIER ';' {
+      Symtab::cur()->reg($2.str(), $1.type());
+    }
+  ;
+
+type_specifier:
+    TK_INT {
+      $$ = SemanticValue(&Type::INT);
+    }
+  | TK_DOUBLE {
+      $$ = SemanticValue(&Type::DOUBLE);
     }
   ;
 

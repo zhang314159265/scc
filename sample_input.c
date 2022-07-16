@@ -1,3 +1,6 @@
 {
-  a[i] = a[j] + 1;
+  int a;
+  int c;
+  double b;
+  c = a + 1;
 }
