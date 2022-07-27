@@ -29,7 +29,19 @@ class ArrayType : public Type {
   int size() const override {
     return of_->size() * size_;
   }
+  Type* of() const {
+    return of_;
+  }
  private:
   int size_; // number of element
   Type* of_;
 };
+
+static inline bool typeEq(Type* lhs, Type* rhs) {
+  // TODO can we allow non-singleton types?
+  return lhs == rhs;
+}
+
+static inline bool isArrayType(Type* ty) {
+  return dynamic_cast<ArrayType*>(ty) != nullptr;
+}

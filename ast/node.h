@@ -48,7 +48,7 @@ template <typename ElemType>
 class NodeList {
  public:
   NodeList() { }
-	NodeList& addElem(ElemType* elemPtr) {
+	virtual NodeList& addElem(ElemType* elemPtr) {
 		auto up = std::unique_ptr<ElemType>(elemPtr);
 		list_.emplace_back(std::move(up));
 		return *this;

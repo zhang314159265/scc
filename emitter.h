@@ -2,6 +2,7 @@
 
 #include "ast/expr.h"
 #include "label.h"
+#include "type.h"
 
 /*
  * Emit 3 address code
@@ -27,8 +28,8 @@ class Emitter {
       label->use()));
   }
 
-  std::unique_ptr<ast::Temp> createTemp() {
-    return std::make_unique<ast::Temp>(++next_temp_id_);
+  std::unique_ptr<ast::Temp> createTemp(Type* type) {
+    return std::make_unique<ast::Temp>(++next_temp_id_, type);
   }
  private:
   int next_temp_id_ = 0;

@@ -7,6 +7,9 @@
 class Symtab {
  public:
   void reg(const std::string& id, Type* type);
+  Type* getType(const std::string& id) {
+    return tab_[id];
+  }
   void dump();
   static Symtab* cur();
  private:

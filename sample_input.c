@@ -1,7 +1,9 @@
 {
-  double a;
+  double a[5];
+  double b;
   double c;
-  double b[5];
-  b[0] = a;
-  c = b[1];
+  int i;
+  int j;
+  a[i] = b;
+  c = a[j];
 }
