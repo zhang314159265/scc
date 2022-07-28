@@ -7,7 +7,7 @@ class Type {
   explicit Type(int size) : size_(size) { }
   virtual int size() const { return size_; }
   // type singletons
-  static Type INT, DOUBLE;
+  static Type INT, DOUBLE, BOOL;
  private:
   int size_;
 };

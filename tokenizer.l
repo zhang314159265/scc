@@ -12,6 +12,11 @@ DIGIT [0-9]
 int { return TK_INT; }
 double { return TK_DOUBLE; }
 
+[<][=] { return TK_LE; }
+[>][=] { return TK_GE; }
+[=][=] { return TK_EQ; }
+[!][=] { return TK_NE; }
+
 for { return FOR; }
 while { return WHILE; }
 [-][-] { return DEC; }

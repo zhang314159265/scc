@@ -3,6 +3,19 @@
 
 namespace ast {
 
+void ExprBase::emitJumps(Emitter* emitter, const std::string& testStr, Label* trueLabel, Label* falseLabel) {
+  if (trueLabel && falseLabel) {
+    emitter->emitCondJump(testStr, trueLabel, false);
+    emitter->emitJump(falseLabel);
+  } else if (trueLabel) {
+    emitter->emitCondJump(testStr, trueLabel, false);
+  } else if (falseLabel) {
+    emitter->emitCondJump(testStr, falseLabel, true);
+  } else {
+    // do nothing. just fallthru
+  }
+}
+
 std::unique_ptr<ExprBase> CommaExpr::gen(Emitter* emitter) {
   std::unique_ptr<ExprBase> last = nullptr;
   for (auto& itemptr : list_) {
@@ -35,16 +48,7 @@ std::unique_ptr<ExprBase> BinOpExpr::gen(Emitter* emitter) {
 
 void Id::jumping(Emitter* emitter, Label* trueLabel, Label* falseLabel) {
   auto testStr = fmt::format("{} != 0", str_);
-  if (trueLabel && falseLabel) {
-    emitter->emitCondJump(testStr, trueLabel, false);
-    emitter->emitJump(falseLabel);
-  } else if (trueLabel) {
-    emitter->emitCondJump(testStr, trueLabel, false);
-  } else if (falseLabel) {
-    emitter->emitCondJump(testStr, falseLabel, true);
-  } else {
-    // do nothing. just fallthru
-  }
+  emitJumps(emitter, testStr, trueLabel, falseLabel);
 }
 
 std::unique_ptr<ExprBase> AssignExpr::gen(Emitter* emitter) {

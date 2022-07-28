@@ -183,6 +183,14 @@ static SemanticValue createArrayAccessNode(SemanticValue array, SemanticValue in
   ));
 }
 
+static SemanticValue createRelExpr(const std::string& opstr, SemanticValue lhs, SemanticValue rhs) {
+  return SemanticValue(new RelExpr(
+    opstr,
+    lhs.astNode()->to<ExprBase>(),
+    rhs.astNode()->to<ExprBase>()
+  ));
+}
+
 // Will release the memory for declAux before returning.
 void processDeclaration(Type* baseType, DeclAux* declAux) {
   declAux->setBaseType(baseType);
@@ -219,6 +227,12 @@ SemanticValue addDimension(SemanticValue declAux, SemanticValue newDim) {
 // types
 %token TK_INT
 %token TK_DOUBLE
+
+// relational op
+%token TK_LE
+%token TK_GE
+%token TK_EQ
+%token TK_NE
 
 %%
 
@@ -358,6 +372,36 @@ logical_or_expression:
   ;
 
 logical_and_expression:
+    equality_expression
+  ;
+
+equality_expression:
+    relational_expression
+  | equality_expression TK_EQ relational_expression {
+    $$ = createRelExpr("==", $1, $3);
+  }
+  | equality_expression TK_NE relational_expression {
+    $$ = createRelExpr("!=", $1, $3);
+  }
+  ;
+
+relational_expression:
+    shift_expression
+  | relational_expression '<' shift_expression {
+    $$ = createRelExpr("<", $1, $3);
+  }
+  | relational_expression '>' shift_expression {
+    $$ = createRelExpr(">", $1, $3);
+  }
+  | relational_expression TK_LE shift_expression {
+    $$ = createRelExpr("<=", $1, $3);
+  }
+  | relational_expression TK_GE shift_expression {
+    $$ = createRelExpr(">=", $1, $3);
+  }
+  ;
+
+shift_expression:
     additive_expression
   ;
 

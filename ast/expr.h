@@ -46,6 +46,8 @@ class ExprBase : public Node {
   Type* type() {
     return type_;
   }
+
+  void emitJumps(Emitter* emitter, const std::string& testStr, Label* trueLabel, Label* falseLabel);
  protected:
   Type* type_;
 };
@@ -235,6 +237,32 @@ class ArrayAccess : public ExprBase {
  private:
   std::unique_ptr<ExprBase> array_;
   std::vector<std::unique_ptr<ExprBase>> indexList_;
+};
+
+class RelExpr : public ExprBase {
+ public:
+  explicit RelExpr(const std::string& opstr, ExprBase* lhs, ExprBase *rhs) : ExprBase(&Type::BOOL), opstr_(opstr), lhs_(lhs), rhs_(rhs) {
+  }
+
+  void dump(int depth=0) override {
+    Node::indent(depth);
+    std::cout << "REL " << opstr_ << std::endl;
+    lhs_->dump(depth + 1);
+    rhs_->dump(depth + 1);
+  }
+
+  void jumping(Emitter* emitter, Label* trueLabel, Label* falseLabel) override {
+    auto reduced_lhs = lhs_->gen(emitter);
+    auto reduced_rhs = rhs_->gen(emitter);
+    auto testStr = fmt::format("{} {} {}",
+      reduced_lhs->getAddrStr(emitter),
+      opstr_,
+      reduced_rhs->getAddrStr(emitter));
+    emitJumps(emitter, testStr, trueLabel, falseLabel);
+  }
+ private:
+  std::string opstr_;
+  std::unique_ptr<ExprBase> lhs_, rhs_;
 };
 
 };

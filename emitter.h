@@ -23,7 +23,7 @@ class Emitter {
 
   void emitCondJump(const std::string& testStr, Label* label, bool negate) {
     emit(fmt::format("if{} {} goto {}",
-      negate ? "false" : "true",
+      negate ? "false" : "",
       testStr,
       label->use()));
   }
