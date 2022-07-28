@@ -76,6 +76,33 @@ class ExprStmt : public Stmt {
   std::unique_ptr<ExprBase> expr_; // can be nullptr
 };
 
+class IfElse : public StmtBase {
+ public:
+  explicit IfElse(ExprBase* cond, StmtBase* trueBranch, StmtBase* falseBranch)
+    : cond_(cond), trueBranch_(trueBranch), falseBranch_(falseBranch) { }
+
+  void dump(int depth=0) override {
+    Node::indent(depth);
+    std::cout << "IF_ELSE" << std::endl;
+    cond_->dump(depth + 1);
+    trueBranch_->dump(depth + 1);
+    falseBranch_->dump(depth + 1);
+  }
+
+  void emit(Emitter* emitter, Label* next) override {
+    Label falseBranchBegin;
+    cond_->jumping(emitter, nullptr, &falseBranchBegin);
+    trueBranch_->emit(emitter, next);
+    emitter->emitJump(next);
+    emitter->emitLabel(&falseBranchBegin);
+    falseBranch_->emit(emitter, next);
+  }
+ private:
+  std::unique_ptr<ExprBase> cond_;
+  std::unique_ptr<StmtBase> trueBranch_;
+  std::unique_ptr<StmtBase> falseBranch_;
+};
+
 class While : public Stmt {
  public:
   explicit While(ExprBase* expr, Stmt* stmt) : expr_(expr), stmt_(stmt) { }

@@ -17,6 +17,8 @@ double { return TK_DOUBLE; }
 [=][=] { return TK_EQ; }
 [!][=] { return TK_NE; }
 
+if { return IF; }
+else { return ELSE; }
 for { return FOR; }
 while { return WHILE; }
 [-][-] { return DEC; }

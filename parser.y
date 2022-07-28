@@ -148,6 +148,14 @@ static SemanticValue createBinOp(const std::string& opstr, SemanticValue lhs, Se
   return SemanticValue(resNode.release());
 }
 
+SemanticValue createIfElse(SemanticValue cond, SemanticValue trueBranch, SemanticValue falseBranch) {
+  return SemanticValue(new IfElse(
+    cond.astNode()->to<ExprBase>(),
+    trueBranch.astNode()->to<StmtBase>(),
+    falseBranch.astNode()->to<StmtBase>()
+  ));
+}
+
 static SemanticValue createWhileNode(SemanticValue sv_expr, SemanticValue sv_stmt) {
   auto while_node = new While(
     sv_expr.astNode()->to<ExprBase>(),
@@ -216,6 +224,8 @@ SemanticValue addDimension(SemanticValue declAux, SemanticValue newDim) {
 
 %token INTEGER_CONSTANT
 %token FLOATING_CONSTANT
+%token IF
+%token ELSE
 %token FOR
 %token WHILE
 // can not create token named ID since the generated parser will contains a line like
@@ -333,9 +343,15 @@ statement_list:
 statement:
     expression_statement
   | compound_statement
+  | selection_statement
   | iteration_statement
   ;
 
+selection_statement:
+    IF '(' expression ')' statement ELSE statement {
+      $$ = createIfElse($3, $5, $7);
+    }
+  ;
 iteration_statement:
     WHILE '(' expression ')' statement {
       $$ = createWhileNode($3, $5);
