@@ -4,6 +4,7 @@ DIGIT [0-9]
 %%
 [ \t\r\n]+ { /* ignore spaces */ }
 [/][/].* { /* ignore comment */ }
+[/][*](.|\n)*[*][/] { std::cout << "Ignore comment '" << yytext << "'" << std::endl; /* ignore comment */ }
 {DIGIT}+ { int ival = atoi(yytext); yylval = SemanticValue(new IntConst(ival)); return INTEGER_CONSTANT; }
 
 {DIGIT}+[.]{DIGIT}+ { double dval = atof(yytext); yylval = SemanticValue(new DoubleConst(dval)); return FLOATING_CONSTANT; }
