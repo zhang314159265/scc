@@ -2,6 +2,7 @@
 #include <cassert>
 #include <memory>
 #include <string>
+#include <unistd.h>
 #include "ast/node.h"
 #include "ast/stmt.h"
 #include "ast/expr.h"
@@ -9,6 +10,8 @@
 #include "label.h"
 #include "type.h"
 #include "symtab.h"
+#include "check.h"
+#include "thac.h"
 
 using namespace ast;
 
@@ -238,12 +241,21 @@ SemanticValue addDimension(SemanticValue declAux, SemanticValue newDim) {
 
 root_symbol:
     translation_unit {
-      Emitter emitter;
+      char wsdirTemp[] = "/tmp/scc_wsdir.XXXXXX";
+      CHECK(mkdtemp(wsdirTemp));
+      std::cout << "SCC working directory: " << wsdirTemp << std::endl;
+
+      std::string origThacPath = fmt::format("{}/orig_thac", wsdirTemp);
+      Emitter emitter(origThacPath);
       Label next;
       $1.astNode()->dump();
       $1.astNode()->to<Stmt>()->emit(&emitter, &next);
       next.emit_if_used(&emitter);
       Symtab::cur()->dump();
+
+      emitter.flush();
+
+      handleThac(origThacPath);
     }
   ;
 
