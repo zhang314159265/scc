@@ -6,6 +6,8 @@ DIGIT [0-9]
 [/][/].* { /* ignore comment */ }
 {DIGIT}+ { int ival = atoi(yytext); yylval = SemanticValue(new IntConst(ival)); return INTEGER_CONSTANT; }
 
+{DIGIT}+[.]{DIGIT}+ { double dval = atof(yytext); yylval = SemanticValue(new DoubleConst(dval)); return FLOATING_CONSTANT; }
+
 int { return TK_INT; }
 double { return TK_DOUBLE; }
 

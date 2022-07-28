@@ -204,6 +204,7 @@ SemanticValue addDimension(SemanticValue declAux, SemanticValue newDim) {
 %}
 
 %token INTEGER_CONSTANT
+%token FLOATING_CONSTANT
 %token FOR
 %token WHILE
 // can not create token named ID since the generated parser will contains a line like
@@ -412,6 +413,7 @@ postfix_expression:
 
 primary_expression:
     INTEGER_CONSTANT
+  | FLOATING_CONSTANT
   | IDENTIFIER {
       $$ = SemanticValue(new Id($1.str()));
     }

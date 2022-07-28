@@ -129,6 +129,25 @@ class IntConst : public ExprBase {
   int ival_;
 };
 
+class DoubleConst : public ExprBase {
+ public:
+  explicit DoubleConst(double dval) : ExprBase(&Type::DOUBLE), dval_(dval) { }
+  void dump(int depth=0) override {
+    Node::indent(depth);
+    std::cout << "DOUBLE_CONST " << dval_ << std::endl;
+  }
+  std::unique_ptr<ExprBase> gen(Emitter* emitter) override {
+    return std::make_unique<DoubleConst>(dval_);
+  }
+  std::string getAddrStr(Emitter* emitter) override {
+    return fmt::format("{}", dval_);
+  }
+  double dval() const { return dval_; }
+ private:
+  double dval_;
+};
+
+
 class Temp : public ExprBase {
  public:
   explicit Temp(int temp_id, Type* type) : ExprBase(type), temp_id_(temp_id) {
