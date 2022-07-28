@@ -82,18 +82,37 @@ std::unique_ptr<ExprBase> IncDec::gen(Emitter* emitter) {
 }
 
 std::unique_ptr<Temp> ArrayAccess::createOffsetExpr(Emitter* emitter) {
-  // TODO: assume element size to be 4 here. Get element type from symbol table
-  // instead.
-  auto index_rvalue = index_->gen(emitter);
-  auto temp = emitter->createTemp(&Type::INT);
-  emitter->emit(
-    fmt::format("{} = {} * {}",
-      temp->getAddrStr(emitter),
-      index_rvalue->getAddrStr(emitter),
-      type_->size()
-    ));
+  assert(indexList_.size() > 0);
+  std::unique_ptr<Temp> off;
+  Type* encloseType = array_->type();
+  assert(encloseType);
 
-  return temp;
+  for (auto& index : indexList_) {
+    auto* arrayType = dynamic_cast<ArrayType*>(encloseType);
+    assert(arrayType);
+    encloseType = arrayType->of();
+    auto index_rvalue = index->gen(emitter);
+    auto temp = emitter->createTemp(&Type::INT);
+    emitter->emit(
+      fmt::format("{} = {} * {}",
+        temp->getAddrStr(emitter),
+        index_rvalue->getAddrStr(emitter),
+        encloseType->size()
+      ));
+    if (off) {
+      // sum
+      emitter->emit(
+        fmt::format("{} = {} + {}",
+        off->getAddrStr(emitter),
+        off->getAddrStr(emitter),
+        temp->getAddrStr(emitter)
+      ));
+    } else {
+      off = std::move(temp);
+    }
+  }
+
+  return off;
 }
 
 std::unique_ptr<ExprBase> ArrayAccess::gen(Emitter* emitter) {

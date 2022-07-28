@@ -184,17 +184,29 @@ class IncDec : public ExprBase {
 
 class ArrayAccess : public ExprBase {
  public:
-  explicit ArrayAccess(ExprBase* array, ExprBase* index) : ExprBase(nullptr), array_(array), index_(index) {
+  explicit ArrayAccess(ExprBase* array, ExprBase* index) : ExprBase(nullptr) {
+    // TODO array's memory may get leaked here
     auto arrayTy = dynamic_cast<ArrayType*>(array->type());
     assert(arrayTy);
     type_ = arrayTy->of();
+
+    ArrayAccess* lhs = dynamic_cast<ArrayAccess*>(array);
+    if (lhs) {
+      array_ = std::move(lhs->array_); 
+      indexList_ = std::move(lhs->indexList_);
+    } else {
+      array_.reset(array);
+    }
+    indexList_.push_back(std::unique_ptr<ExprBase>(index));
   }
 
   void dump(int depth=0) override {
     Node::indent(depth);
     std::cout << "ARRAY ACCESS" << std::endl;
     array_->dump(depth + 1);
-    index_->dump(depth + 1);
+    for (auto& index : indexList_) {
+      index->dump(depth + 1);
+    }
   }
   
   // create byte offset
@@ -202,7 +214,8 @@ class ArrayAccess : public ExprBase {
   std::unique_ptr<ExprBase> gen(Emitter* emitter) override;
   std::string getAddrStr(Emitter* emitter) override;
  private:
-  std::unique_ptr<ExprBase> array_, index_;
+  std::unique_ptr<ExprBase> array_;
+  std::vector<std::unique_ptr<ExprBase>> indexList_;
 };
 
 };

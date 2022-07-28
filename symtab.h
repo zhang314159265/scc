@@ -8,7 +8,9 @@ class Symtab {
  public:
   void reg(const std::string& id, Type* type);
   Type* getType(const std::string& id) {
-    return tab_[id];
+    auto itr = tab_.find(id);
+    assert(itr != tab_.end());
+    return itr->second;
   }
   void dump();
   static Symtab* cur();
