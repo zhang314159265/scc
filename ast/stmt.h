@@ -166,9 +166,14 @@ class For : public Stmt {
       // always fall thru if cond_ is missing
     }
 
-    body_->emit(emitter, next);
     if (post_) {
+      Label postinit;
+      body_->emit(emitter, &postinit);
+
+      postinit.emit_if_used(emitter);
       post_->gen(emitter);
+    } else {
+      body_->emit(emitter, &loopbegin);
     }
     // jump to loop begin
     emitter->emitJump(&loopbegin);

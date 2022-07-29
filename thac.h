@@ -2,4 +2,4 @@
 
 #include <string>
 
-void handleThac(const std::string& thacPath);
+void handleThac(const std::string& wsdir, const std::string& thacPath);

@@ -265,7 +265,7 @@ root_symbol:
 
       emitter.flush();
 
-      handleThac(origThacPath);
+      handleThac(wsdirTemp, origThacPath);
     }
   ;
 
