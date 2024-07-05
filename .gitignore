@@ -1,6 +1,7 @@
 .*.swp
 scc
 TODO
+a.out
 
 # generated tokenizer
 tokenizer.cpp
