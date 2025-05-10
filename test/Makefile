@@ -1,3 +1,9 @@
+LLVM_ROOT := ../llvm-project
+CLANG := $(LLVM_ROOT)/build/bin/clang
+CFLAGS := -I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include -Wno-nullability-completeness
+LDFLAGS := -L /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
+
 all:
 	# lldb -- 
-	/Users/penny/shunting/llvm-project/build/bin/clang -I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include -L /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib sum.c
+	$(CLANG) $(CFLAGS) $(LDFLAGS) sum.c
+	./a.out

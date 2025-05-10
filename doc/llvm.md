@@ -15,6 +15,9 @@ To use the clang built from source, I need the following extra flags to find the
 
 These flags are found by running the stock clang/clang++
 
+# Note
+Use llvm version llvmorg-20.1.4 since it's the latest tag on May10 2025.
+
 # Reference
 - [Getting Started with the LLVM System](https://llvm.org/docs/GettingStarted.html#getting-started-with-llvm). This one is out of date. Refer to 'Getting Started: Building and Running Clang' instead
 - [Getting Started: Building and Running Clang](https://clang.llvm.org/get_started.html)
