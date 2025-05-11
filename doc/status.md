@@ -1,6 +1,7 @@
+# Future Features
+- jit run llirapi/showmsg.cpp
+
 # TODO
-- create a standalone hello world example that build llvm IR from scratch..
-  - under llirapi folder
-  - runner
-    - either jit run or compile the llir separately and run it
-- convert scc IR to llvm IR
+- convert scc IR to llvm IR 
+  - go over tokenizer.l <++++++
+- create some classical compiler passes my self upon llir

@@ -260,6 +260,8 @@ void handleThac(const std::string& wsdir, const std::string& thacPath) {
   std::string svgPath = fmt::format("{}/flow_graph.svg", wsdir);
   std::cout << "Convert dot to svg file: " << svgPath << std::endl;
   convertDotToSvg(dotPath, svgPath);
-  std::cout << "Open the svg file..." << std::endl;
-  openSvg(svgPath);
+  if (getenv("OPEN_SVG")) {
+    std::cout << "Open the svg file..." << std::endl;
+    openSvg(svgPath);
+  }
 }

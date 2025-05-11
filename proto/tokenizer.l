@@ -23,7 +23,7 @@ for { return FOR; }
 while { return WHILE; }
 [-][-] { return DEC; }
 [+][+] { return INC; }
-{LETTER_}+({LETTER_}|{DIGIT})* { yylval = SemanticValue(yytext); return IDENTIFIER; }
+{LETTER_}({LETTER_}|{DIGIT})* { yylval = SemanticValue(yytext); return IDENTIFIER; }
 
 . { return yytext[0]; }
 %%

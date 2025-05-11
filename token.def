@@ -1,0 +1,8 @@
+def(TK_INT, 256)
+def(TK_IDENTIFIER, 257)
+def(TK_CONST, 258)
+def(TK_CHAR, 259)
+def(TK_VOID, 260)
+def(TK_RETURN, 261)
+def(TK_STR, 262)
+def(TK_INT_CONST, 263)
