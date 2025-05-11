@@ -1,9 +1,12 @@
 %{
 #include "token.h"
 #include <iostream>
+
+#if STANDALONE_TOKENIZER
 #include "SemanticValue.h"
 
 scc::SemanticValue yylval;
+#endif
 
 %}
 
@@ -12,6 +15,8 @@ DIGIT [0-9]
 
 %%
 [ \t\r\n]+ { /* ignore spaces */ }
+[/][/].* { /* ignore comment */ }
+[/][*](.|\n)*[*][/] { /* ignore comment */ }
 
 int { return TK_INT; }
 const { return TK_CONST; }
@@ -25,11 +30,13 @@ return { return TK_RETURN; }
 
 {DIGIT}+ { int ival = atoi(yytext); yylval = scc::SemanticValue(ival); return TK_INT_CONST; }
 
-. { return yytext[0]; }
 {LETTER_}({LETTER_}|{DIGIT})* { yylval = scc::SemanticValue(yytext); return TK_IDENTIFIER; }
+
+. { return yytext[0]; }
 
 %%
 
+#if STANDALONE_TOKENIZER
 int main() {
   int tok;
 
@@ -48,3 +55,4 @@ int main() {
   }
   return 0;
 }
+#endif

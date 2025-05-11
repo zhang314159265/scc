@@ -1,3 +1,5 @@
+#ifdef STANDALONE_TOKENIZER
+
 #define def(name, val) name = val,
 enum {
 #include "token.def"
@@ -22,3 +24,4 @@ const char *tok_to_str(int tok) {
   return buf;
 }
 
+#endif

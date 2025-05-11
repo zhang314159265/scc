@@ -1,6 +1,9 @@
 tokenizer:
 	lex -o tokenizer.cpp tokenizer.l
-	clang++ -Iinclude -ll tokenizer.cpp
+	bison parser.y -o parser.cpp
+	# clang++ -Iinclude -ll -DSTANDALONE_TOKENIZER tokenizer.cpp 
+	# ./a.out < inputs/showmsg.c
+	clang++ -Iinclude -ll -ly parser.cpp
 	./a.out < inputs/showmsg.c
 
 all:

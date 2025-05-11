@@ -3,5 +3,6 @@
 
 # TODO
 - convert scc IR to llvm IR 
-  - go over tokenizer.l <++++++
+  - go over parser.y
+    - handle function definition <+++++
 - create some classical compiler passes my self upon llir
