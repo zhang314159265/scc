@@ -3,5 +3,4 @@
   - under llirapi folder
   - runner
     - either jit run or compile the llir separately and run it
-- build llvm
 - convert scc IR to llvm IR
