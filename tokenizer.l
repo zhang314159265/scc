@@ -20,12 +20,19 @@ DIGIT [0-9]
 
 int { return TK_INT; }
 const { return TK_CONST; }
+volatile { return TK_VOLATILE; }
+unsigned { return TK_UNSIGNED; }
 char { return TK_CHAR; }
 void { return TK_VOID; }
 return { return TK_RETURN; }
+
 ["]([^"]*)["] { 
   // don't support escaped double-quote yet
   yylval = scc::SemanticValue(yytext + 1, strlen(yytext) - 2); return TK_STR;
+}
+
+['].['] {
+  yylval = scc::SemanticValue((int) yytext[1]); return TK_CHAR_CONST;
 }
 
 {DIGIT}+ { int ival = atoi(yytext); yylval = scc::SemanticValue(ival); return TK_INT_CONST; }
