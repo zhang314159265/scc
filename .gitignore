@@ -2,6 +2,7 @@
 scc
 TODO
 a.out
+a.out.dSYM
 
 # generated tokenizer
 tokenizer.cpp

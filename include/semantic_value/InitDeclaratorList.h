@@ -1,5 +1,5 @@
 #pragma once
-#include "semantic_value/InitDeclarator.h"
+#include "InitDeclarator.h"
 
 namespace scc {
 CreateListTypeDecl(InitDeclarator)

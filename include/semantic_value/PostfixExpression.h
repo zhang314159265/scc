@@ -1,5 +1,5 @@
 #pragma once
-#include "semantic_value/PrimaryExpression.h"
+#include "PrimaryExpression.h"
 
 namespace scc {
 
@@ -14,7 +14,7 @@ class Postfix {
  public:
   Postfix() : tag(PostfixExpression_NONE) { }
   Postfix(const ArgumentExpressionList& argument_expression_list);
- private:
+ public:
   int tag;
   std::shared_ptr<ArgumentExpressionList> argument_expression_list_ptr;
 
@@ -27,7 +27,7 @@ class PostfixExpression {
   PostfixExpression(const PrimaryExpression &primary_expression) : primary_expression(primary_expression) { }
 
   PostfixExpression& addPostfix(const ArgumentExpressionList& argument_expression_list);
- private:
+ public:
   PrimaryExpression primary_expression;
   std::vector<Postfix> postfixList;
   friend std::ostream& operator<<(std::ostream& os, const PostfixExpression& parent);

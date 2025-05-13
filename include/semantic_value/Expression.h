@@ -1,5 +1,5 @@
 #pragma once
-#include "semantic_value/AssignmentExpression.h"
+#include "AssignmentExpression.h"
 
 namespace scc {
 

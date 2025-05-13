@@ -1,6 +1,6 @@
 #pragma once
-#include "semantic_value/Pointer.h"
-#include "semantic_value/DirectDeclarator.h"
+#include "Pointer.h"
+#include "DirectDeclarator.h"
 
 namespace scc {
 
@@ -11,7 +11,7 @@ class Declarator {
     this->pointer = pointer;
     this->direct_declarator = direct_declarator;
   }
- private:
+ public:
   Pointer pointer;
   DirectDeclarator direct_declarator;
   friend std::ostream& operator<<(std::ostream& os, const Declarator& declarator);

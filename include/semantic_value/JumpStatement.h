@@ -11,7 +11,7 @@ class JumpStatement {
  public:
   JumpStatement() : tag(JumpStatement_None) {}
   JumpStatement(const Expression &expression) : tag(JumpStatement_RETURN), expression(expression) { }
- private:
+ public:
   int tag;
   Expression expression;
   friend std::ostream& operator<<(std::ostream& os, const JumpStatement& parent) {

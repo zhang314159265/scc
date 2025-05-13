@@ -6,7 +6,7 @@
    public: \
     ParentType() { } \
     ParentType(const ChildType& item) : item(item) { } \
-   private: \
+   public: \
     ChildType item; \
     friend std::ostream& operator<<(std::ostream& os, const ParentType& parent) { \
       os << #ParentType << std::endl; \
@@ -36,7 +36,7 @@
       items.push_back(item); \
       return * this; \
     } \
-   private: \
+   public: \
     std::vector<ItemTypeName> items; \
     friend std::ostream& operator<<(std::ostream& os, const ListType& list) { \
       os << #ListType " " << list.items.size() << std::endl; \
@@ -59,7 +59,7 @@
       items.push_back(item); \
       return * this; \
     } \
-   private: \
+   public: \
     std::vector<ItemTypeName> items; \
     friend std::ostream& operator<<(std::ostream& os, const ListType& list); \
   };
@@ -80,7 +80,7 @@
    public: \
     ComposeType() { } \
     ComposeType(const Type1& item1, const Type2 &item2) : item1(item1), item2(item2) { } \
-   private: \
+   public: \
     Type1 item1; \
     Type2 item2; \
     friend std::ostream& operator<<(std::ostream& os, const ComposeType& parent); \
@@ -99,7 +99,7 @@
    public: \
     ComposeType() { } \
     ComposeType(const Type1& item1, const Type2 &item2) : item1(item1), item2(item2) { } \
-   private: \
+   public: \
     Type1 item1; \
     Type2 item2; \
     friend std::ostream& operator<<(std::ostream& os, const ComposeType& parent) { \
@@ -115,7 +115,7 @@
    public: \
     ComposeType() { } \
     ComposeType(const Type1& item1, const Type2 &item2, const Type3 &item3) : item1(item1), item2(item2), item3(item3) { } \
-   private: \
+   public: \
     Type1 item1; \
     Type2 item2; \
     Type3 item3; \
@@ -153,7 +153,7 @@ class ResultType { \
       assert(0); \
     } \
   } \
- private: \
+ public: \
   int tag; \
   Type1 val1; \
   Type2 val2; \
@@ -202,7 +202,7 @@ class ResultType { \
       assert(0); \
     } \
   } \
- private: \
+ public: \
   int tag; \
   Type1 val1; \
   Type2 val2; \

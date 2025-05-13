@@ -28,7 +28,7 @@ class PrimaryExpression {
       assert(0);
     }
   }
- private:
+ public:
   int tag;
   std::string str;
   Constant constant;

@@ -1,5 +1,5 @@
 #pragma once
-#include "semantic_value/Declarator.h"
+#include "Declarator.h"
 #include "semantic_value/Pointer.h"
 
 namespace scc {
@@ -9,7 +9,7 @@ class InitDeclarator {
   InitDeclarator() {}
   InitDeclarator(Declarator _declarator) : declarator(_declarator) { }
 
- private:
+ public:
   Declarator declarator;
 
   friend std::ostream& operator<<(std::ostream& os, const InitDeclarator& init_declarator);

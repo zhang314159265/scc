@@ -1,7 +1,7 @@
 #pragma once
 
 #include <iostream>
-#include "semantic_value/InitDeclaratorList.h"
+#include "InitDeclaratorList.h"
 #include "semantic_value/DeclarationSpecifiers.h"
 
 namespace scc {

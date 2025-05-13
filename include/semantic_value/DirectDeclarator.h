@@ -14,7 +14,7 @@ class DirectDeclarator {
     decl_list_list.push_back(decl_list);
     return *this;
   }
- private:
+ public:
   std::string identifier;
   std::vector<DeclarationList> decl_list_list;
 

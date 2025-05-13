@@ -14,7 +14,7 @@ class Pointer {
     quallists.push_back(quallist);
     return *this;
   }
- private:
+ public:
   std::vector<TypeQualifierList> quallists;
   friend std::ostream& operator<<(std::ostream& os, const Pointer& pointer);
 };

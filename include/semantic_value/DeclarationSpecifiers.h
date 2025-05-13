@@ -21,7 +21,7 @@ class DeclarationSpecifiers {
     quallist.push_back(qual);
     return *this;
   }
- private:
+ public:
   std::vector<TypeSpecifier> speclist;
   std::vector<TypeQualifier> quallist;
   friend std::ostream& operator<<(std::ostream&, const DeclarationSpecifiers& specs);

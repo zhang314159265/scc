@@ -32,7 +32,12 @@ using namespace scc;
 root_symbol:
     translation_unit {
       std::cout << "Done parsing" << std::endl;
+      #if 0
       std::cout << $1 << std::endl;
+      #endif
+
+      TranslationUnit& tu = $1.translation_unit;
+      post_parse(tu);
     }
   ;
 
