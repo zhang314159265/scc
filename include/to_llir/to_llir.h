@@ -3,6 +3,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
+#include "llvm/IR/ValueSymbolTable.h"
 #include "semantic_value/TranslationUnit.h"
 #include <iostream>
 
@@ -11,39 +12,64 @@ namespace scc {
 struct LoweredDeclaration {
   std::string name;
   llvm::Type *type;
+  llvm::Value *initializer = nullptr;
 };
 
-void to_llir(TranslationUnit& tu, llvm::Module &M);
-void to_llir(ExternalDeclaration& ed, llvm::Module &M);
-LoweredDeclaration to_llir(Declaration& d, llvm::Module &M);
-llvm::Type *to_llir(DeclarationSpecifiers &ds, llvm::Module& M);
-llvm::Type *to_llir(TypeSpecifier &ts, llvm::Module &M);
-LoweredDeclaration to_llir(InitDeclarator &id, llvm::Type* type, llvm::Module &M);
-LoweredDeclaration to_llir(Declarator &de, llvm::Type* type, llvm::Module &M);
-llvm::Type *to_llir(Pointer &pointer, llvm::Type *type);
-LoweredDeclaration to_llir(DirectDeclarator &dd, llvm::Type *type, llvm::Module &M);
-void to_llir(CompoundStatement &cs, llvm::Module &M, llvm::IRBuilder<> &B);
-void to_llir(Statement &st, llvm::Module &M, llvm::IRBuilder<> &B);
-void to_llir(ExpressionStatement &es, llvm::Module &M, llvm::IRBuilder<> &B);
-llvm::Value *to_llir(Expression &e, llvm::Module &M, llvm::IRBuilder<> &B);
-llvm::Value *to_llir(AssignmentExpression &ae, llvm::Module &M, llvm::IRBuilder<> &B);
-llvm::Value *to_llir(PostfixExpression &ce, llvm::Module &M, llvm::IRBuilder<> &B);
-llvm::Value *to_llir(PrimaryExpression &ce, llvm::Module &M, llvm::IRBuilder<> &B);
-void to_llir(JumpStatement &js, llvm::Module &M, llvm::IRBuilder<> &B);
-llvm::Value *to_llir(Constant &con, llvm::Module &M, llvm::IRBuilder<> &B);
+struct LowerContext {
+  llvm::LLVMContext* C;
+  llvm::Module* M;
 
-void to_llir(TranslationUnit& tu, llvm::Module &M) {
+  // optional fields. can be nullptr.
+  llvm::Function *F = nullptr; // used to lookup local variable
+  llvm::IRBuilder<> *B = nullptr;
+
+  void dumpModule() {
+    M->dump();
+  }
+};
+
+}
+
+#include "to_llir_helper.h"
+
+namespace scc {
+
+void to_llir(TranslationUnit& tu, LowerContext &LC);
+void to_llir(ExternalDeclaration& ed, LowerContext &LC);
+LoweredDeclaration to_llir(Declaration& d, LowerContext &LC);
+LoweredDeclaration to_llir(DirectDeclarator &dd, llvm::Type *type, LowerContext &LC);
+LoweredDeclaration to_llir(Declarator &de, llvm::Type* type, LowerContext &LC);
+LoweredDeclaration to_llir(InitDeclarator &id, llvm::Type* type, LowerContext &LC);
+llvm::Type *to_llir(DeclarationSpecifiers &ds, LowerContext &LC);
+llvm::Type *to_llir(TypeSpecifier &ts, LowerContext &LC);
+llvm::Type *to_llir(Pointer &pointer, llvm::Type *type);
+void to_llir(Statement &st, LowerContext &LC);
+void to_llir(CompoundStatement &cs, LowerContext &LC);
+void to_llir(ExpressionStatement &es, LowerContext &LC);
+void to_llir(JumpStatement &js, LowerContext &LC);
+void to_llir(IterationStatement &is, LowerContext &LC);
+
+llvm::Value *to_llir(Expression &e, LowerContext &LC);
+llvm::Value *to_llir(AssignmentExpression &ae, LowerContext &LC);
+llvm::Value *to_llir(PostfixExpression &ce, LowerContext &LC);
+llvm::Value *to_llir(PrimaryExpression &ce, LowerContext &LC);
+llvm::Value *to_llir(Constant &con, LowerContext &LC);
+llvm::Value *to_llir(UnaryExpression &ue, LowerContext &LC);
+llvm::Value *to_llir(RelationalExpression &re, LowerContext &LC);
+
+void to_llir(TranslationUnit& tu, LowerContext &LC) {
   for (auto &external_declaration : tu.items) {
-    to_llir(external_declaration, M);
+    to_llir(external_declaration, LC);
   }
 }
 
-void to_llir(ExternalDeclaration& ed, llvm::Module &M) {
+void to_llir(ExternalDeclaration& ed, LowerContext &LC) {
+  llvm::Module &M = *LC.M;
   switch (ed.tag) {
   case ExternalDeclaration_FunctionDefinition: {
     auto &def = ed.function_definition;
-    llvm::Type *type = to_llir(def.declaration_specifiers, M);
-    LoweredDeclaration ld = to_llir(def.declarator, type, M);
+    llvm::Type *type = to_llir(def.declaration_specifiers, LC);
+    LoweredDeclaration ld = to_llir(def.declarator, type, LC);
     assert(ld.name.size() > 0);
     assert(ld.type->isFunctionTy());
 
@@ -62,11 +88,17 @@ void to_llir(ExternalDeclaration& ed, llvm::Module &M) {
     llvm::IRBuilder<> B(C);
     B.SetInsertPoint(BB);
 
-    to_llir(def.compound_statement, M, B);
+    assert(LC.B == nullptr);
+    assert(LC.F == nullptr);
+    LC.B = &B;
+    LC.F = F;
+    to_llir(def.compound_statement, LC);
+    LC.B = nullptr;
+    LC.F = nullptr;
     break;
   }
   case ExternalDeclaration_Declaration: {
-    auto loweredDeclaration = to_llir(ed.declaration, M);
+    auto loweredDeclaration = to_llir(ed.declaration, LC);
     auto name = loweredDeclaration.name;
     llvm::Type *type = loweredDeclaration.type;
     if (type->isFunctionTy()) {
@@ -83,8 +115,10 @@ void to_llir(ExternalDeclaration& ed, llvm::Module &M) {
   }
 }
 
-LoweredDeclaration to_llir(Declaration& d, llvm::Module &M) {
-  llvm::Type *type = to_llir(d.declaration_specifiers, M);
+LoweredDeclaration to_llir(Declaration& d, LowerContext &LC) {
+  llvm::Module &M = *LC.M;
+  
+  llvm::Type *type = to_llir(d.declaration_specifiers, LC);
 
   if (d.init_declarator_list.items.size() == 0) {
     return {std::string(), type};
@@ -92,15 +126,16 @@ LoweredDeclaration to_llir(Declaration& d, llvm::Module &M) {
 
   assert(d.init_declarator_list.items.size() == 1);
   for (auto &init_declarator : d.init_declarator_list.items) {
-    return to_llir(init_declarator, type, M);
+    return to_llir(init_declarator, type, LC);
   }
   assert(0);
 }
 
-llvm::Type *to_llir(DeclarationSpecifiers &ds, llvm::Module& M) {
+llvm::Type *to_llir(DeclarationSpecifiers &ds, LowerContext &LC) {
+  llvm::Module &M = *LC.M;
   assert(ds.speclist.size() == 1);
 
-  llvm::Type *type = to_llir(ds.speclist[0], M);
+  llvm::Type *type = to_llir(ds.speclist[0], LC);
   #if 0 // ignore qualifier
   for (TypeQualifier qual : ds.quallist) {
     switch (qual) {
@@ -114,8 +149,8 @@ llvm::Type *to_llir(DeclarationSpecifiers &ds, llvm::Module& M) {
   return type;
 }
 
-llvm::Type *to_llir(TypeSpecifier &ts, llvm::Module &M) {
-  llvm::LLVMContext &C = M.getContext();
+llvm::Type *to_llir(TypeSpecifier &ts, LowerContext& LC) {
+  llvm::LLVMContext &C = *LC.C;
   switch (ts) {
   case INT:
     return llvm::Type::getInt32Ty(C);
@@ -129,13 +164,20 @@ llvm::Type *to_llir(TypeSpecifier &ts, llvm::Module &M) {
   return NULL;
 }
 
-LoweredDeclaration to_llir(InitDeclarator &id, llvm::Type* type, llvm::Module &M) {
-  return to_llir(id.declarator, type, M);
+LoweredDeclaration to_llir(InitDeclarator &id, llvm::Type* type, LowerContext &LC) {
+  llvm::Value *initializer = nullptr;
+  Initializer &initCST = id.initializer;
+  if (initCST.tag == Initializer_Expr) {
+    initializer = to_llir(initCST.assignment_expression, LC);
+  }
+  LoweredDeclaration ld = to_llir(id.declarator, type, LC);
+  ld.initializer = initializer;
+  return ld;
 }
 
-LoweredDeclaration to_llir(Declarator &de, llvm::Type* type, llvm::Module &M) {
+LoweredDeclaration to_llir(Declarator &de, llvm::Type* type, LowerContext &LC) {
   type = to_llir(de.pointer, type);
-  return to_llir(de.direct_declarator, type, M);
+  return to_llir(de.direct_declarator, type, LC);
 }
 
 llvm::Type *to_llir(Pointer &pointer, llvm::Type *type) {
@@ -146,7 +188,7 @@ llvm::Type *to_llir(Pointer &pointer, llvm::Type *type) {
   return type;
 }
 
-LoweredDeclaration to_llir(DirectDeclarator &dd, llvm::Type *type, llvm::Module &M) {
+LoweredDeclaration to_llir(DirectDeclarator &dd, llvm::Type *type, LowerContext& LC) {
   const std::string &name = dd.identifier;
   std::vector<DeclarationList> decl_list_list = dd.decl_list_list;
 
@@ -155,7 +197,7 @@ LoweredDeclaration to_llir(DirectDeclarator &dd, llvm::Type *type, llvm::Module 
     DeclarationList &decl_list = decl_list_list[0];
     std::vector<llvm::Type*> argTypes;
     for (Declaration &decl : decl_list.items) {
-      LoweredDeclaration ld = to_llir(decl, M);
+      LoweredDeclaration ld = to_llir(decl, LC);
       // ld.name does not matter
       argTypes.push_back(ld.type);
     }
@@ -168,7 +210,7 @@ LoweredDeclaration to_llir(DirectDeclarator &dd, llvm::Type *type, llvm::Module 
     llvm::FunctionType *funcType = llvm::FunctionType::get(
       type,
       argTypes,
-      false
+      decl_list.hasEllipsis
     );
     return {name, funcType};
   } else if (decl_list_list.size() == 0) {
@@ -178,30 +220,54 @@ LoweredDeclaration to_llir(DirectDeclarator &dd, llvm::Type *type, llvm::Module 
   assert(0);
 }
 
-void to_llir(CompoundStatement &cs, llvm::Module&M, llvm::IRBuilder<> &B) {
-  assert(cs.declaration_list.items.size() == 0);
+void to_llir(CompoundStatement &cs, LowerContext &LC) {
+  for (auto &declaration : cs.declaration_list.items) {
+    LoweredDeclaration lowered_decl = to_llir(declaration, LC);
+
+    // create alloca
+    assert(LC.B);
+    llvm::IRBuilder<> &B = *LC.B;
+    llvm::AllocaInst * alloca = B.CreateAlloca(lowered_decl.type, nullptr, lowered_decl.name);
+
+    // handle initializer
+    if (lowered_decl.initializer) {
+      B.CreateStore(
+        lowered_decl.initializer,
+        alloca);
+    }
+  }
   for (auto &statement : cs.statement_list.items) {
-    to_llir(statement, M, B);
+    to_llir(statement, LC);
   }
 }
 
-void to_llir(Statement &st, llvm::Module& M, llvm::IRBuilder<> &B) {
+void to_llir(Statement &st, LowerContext &LC) {
   switch (st.tag) {
   case Statement_ExpressionStatement:
-    to_llir(st.expression_statement, M, B);
+    to_llir(st.expression_statement, LC);
     break;
   case Statement_JumpStatement:
-    to_llir(st.jump_statement, M, B);
+    to_llir(st.jump_statement, LC);
+    break;
+  case Statement_IterationStatement:
+    to_llir(*st.iteration_statement, LC);
+    break;
+  case Statement_CompoundStatement:
+    to_llir(*st.compound_statement, LC);
     break;
   default:
+    std::cout << st.tag << std::endl;
     assert(0);
   }
 }
 
-void to_llir(JumpStatement &js, llvm::Module &M, llvm::IRBuilder<> &B) {
+void to_llir(JumpStatement &js, LowerContext& LC) {
+  llvm::Module &M = *LC.M;
+  llvm::IRBuilder<> &B = *LC.B;
+
   switch (js.tag) {
   case JumpStatement_RETURN: {
-    llvm::Value *val = to_llir(js.expression, M, B);  
+    llvm::Value *val = to_llir(js.expression, LC);  
     B.CreateRet(val);
     break;
   }
@@ -210,26 +276,37 @@ void to_llir(JumpStatement &js, llvm::Module &M, llvm::IRBuilder<> &B) {
   }
 }
 
-void to_llir(ExpressionStatement &es, llvm::Module &M, llvm::IRBuilder<> &B) {
-  to_llir(es.expression, M, B);
+void to_llir(ExpressionStatement &es, LowerContext &LC) {
+  llvm::Module &M = *LC.M;
+  llvm::IRBuilder<> &B = *LC.B;
+
+  to_llir(es.expression, LC);
 }
 
-llvm::Value *to_llir(Expression &e, llvm::Module& M, llvm::IRBuilder<> &B) {
+llvm::Value *to_llir(Expression &e, LowerContext &LC) {
   // return llvm::Value* for the last assignment expression
   llvm::Value *value = NULL;
-  assert(e.items.size() > 0);
+  // size can be 0 for opt_expression use in for statement
+  // assert(e.items.size() > 0);
   for (auto &assignmentExpression : e.items) {
-    value = to_llir(assignmentExpression, M, B);
+    value = to_llir(assignmentExpression, LC);
   }
   return value;
 }
 
-llvm::Value *to_llir(AssignmentExpression &ae, llvm::Module &M, llvm::IRBuilder<> &B) {
-  return to_llir(ae.conditional_expression, M, B);
+llvm::Value *to_llir(AssignmentExpression &ae, LowerContext &LC) {
+  llvm::Value *rhs = to_llir(ae.conditional_expression, LC);
+  for (auto pair : ae.lhsList) {
+    llvm::Value *lhs = to_llir(pair.first, LC);
+    AssignmentOperator op = pair.second;
+    handleAssignment(lhs, rhs, op, LC);
+  }
+  return rhs;
 }
 
-llvm::Value *to_llir(PostfixExpression &pe, llvm::Module &M, llvm::IRBuilder<> &B) {
-  llvm::Value *primary = to_llir(pe.primary_expression, M, B);
+llvm::Value *to_llir(PostfixExpression &pe, LowerContext &LC) {
+  llvm::IRBuilder<> &B = *LC.B;
+  llvm::Value *primary = to_llir(pe.primary_expression, LC);
 
   if (pe.postfixList.size() == 0) {
     return primary;
@@ -241,7 +318,7 @@ llvm::Value *to_llir(PostfixExpression &pe, llvm::Module &M, llvm::IRBuilder<> &
 
   std::vector<llvm::Value *> args;
   for (auto& assignmentExpr : postfix.argument_expression_list_ptr->items) {
-    args.push_back(to_llir(assignmentExpr, M, B));
+    args.push_back(derefIfNeeded(to_llir(assignmentExpr, LC), LC));
   }
 
   llvm::Type *primary_type = primary->getType();
@@ -252,30 +329,34 @@ llvm::Value *to_llir(PostfixExpression &pe, llvm::Module &M, llvm::IRBuilder<> &
   return B.CreateCall(callee, args);
 }
 
-llvm::Value *to_llir(PrimaryExpression &pe, llvm::Module &M, llvm::IRBuilder<> &B) {
+llvm::Value *to_llir(PrimaryExpression &pe, LowerContext &LC) {
+  // TODO: how to handle primary expression for global variable?
+  llvm::Module &M = *LC.M;
+  llvm::IRBuilder<> &B = *LC.B;
+
   switch (pe.tag) {
   case PrimaryExpression_IDENTIFIER: {
-    // TODO handle local variable
-    llvm::GlobalValue *gv = M.getNamedValue(pe.str);
-    assert(gv);
-    return gv;
+    return lookupIdentifier(pe.str, LC);
   }
   case PrimaryExpression_STR: {
-    return B.CreateGlobalString(pe.str);
+    return B.CreateGlobalString(handleStringEscape(pe.str));
   }
   case PrimaryExpression_constant:
-    return to_llir(pe.constant, M, B);
+    return to_llir(pe.constant, LC);
   default:
     assert(0);
   }
   return NULL;
 }
 
-llvm::Value *to_llir(Constant &con, llvm::Module &M, llvm::IRBuilder<> &B) {
+llvm::Value *to_llir(Constant &con, LowerContext &LC) {
+  llvm::Module &M = *LC.M;
+  llvm::LLVMContext &C = *LC.C;
+
   switch (con.tag) {
   case Constant_int:
     return llvm::ConstantInt::get(
-      llvm::Type::getInt32Ty(M.getContext()),
+      llvm::Type::getInt32Ty(C),
       con.ival
     );
   case Constant_char:
@@ -283,6 +364,80 @@ llvm::Value *to_llir(Constant &con, llvm::Module &M, llvm::IRBuilder<> &B) {
   default:
     assert(0);
   }
+}
+
+llvm::Value *to_llir(UnaryExpression &ue, LowerContext &LC) {
+  
+  switch (ue.tag) {
+  case UnaryExpression_PostfixExpression:
+    return to_llir(ue.postfix_expression, LC);
+  case UnaryExpression_PREINC: {
+    llvm::IRBuilder<> &B = *LC.B;
+    llvm::Value *var = to_llir(*ue.unary_expression, LC);
+    llvm::AllocaInst *inst = llvm::cast<llvm::AllocaInst>(var);
+    llvm::Type *type = inst->getAllocatedType();
+    llvm::Value *val = B.CreateLoad(type, var);
+    // TODO handle floating point
+    llvm::Value *one = llvm::ConstantInt::get(type, 1);
+    llvm::Value *result = B.CreateAdd(val, one);
+    B.CreateStore(result, var);
+    return result;
+  }
+  default:
+    assert(0);
+  }
+}
+
+llvm::Value *to_llir(RelationalExpression &re, LowerContext &LC) {
+  llvm::Value *firstitem = to_llir(re.firstitem, LC);
+  if (re.pairlist.size() == 0) {
+    return firstitem;
+  }
+
+  if (re.pairlist.size() == 1) {
+    auto pair = re.pairlist[0];
+    llvm::Value *rhs = to_llir(pair.second, LC);
+    return handleRelational(firstitem, rhs, pair.first, LC);
+  }
+
+  std::cout << "Fail to handle relational expression" << std::endl;
+  std::cout << re << std::endl;
+  assert(0);
+}
+
+void to_llir(IterationStatement &is, LowerContext &LC) {
+  assert(LC.B);
+  llvm::LLVMContext &C = *LC.C;
+  llvm::Function *F = LC.F;
+  llvm::IRBuilder<> &B = *LC.B;
+
+  // handle expr1, don't care about the value
+  to_llir(is.expr1, LC);
+
+  // Create BasicBlocks
+  llvm::BasicBlock *condCheck = llvm::BasicBlock::Create(C, "condCheck", F);
+  llvm::BasicBlock *body = llvm::BasicBlock::Create(C, "body", F);
+  llvm::BasicBlock *exit = llvm::BasicBlock::Create(C, "exit", F);
+
+  // jump to condCheck
+  B.CreateBr(condCheck);
+
+  { // handle condCheck
+    B.SetInsertPoint(condCheck);
+    llvm::Value *val = to_llir(is.expr2, LC);
+    assert(val != nullptr); // TODO handle empty conditon check
+    B.CreateCondBr(val, body, exit);
+  }
+
+  { // handle body
+    B.SetInsertPoint(body);
+    to_llir(is.stmt, LC);
+    to_llir(is.expr3, LC);
+    B.CreateBr(condCheck);
+  }
+
+  // setup LC.B properly for later
+  B.SetInsertPoint(exit);
 }
 
 }

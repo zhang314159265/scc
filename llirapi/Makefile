@@ -6,8 +6,8 @@ CFLAGS :=
 LDFLAGS := -L /opt/homebrew/Cellar/zstd/1.5.7/lib
 
 all:
-	clang++ $(CFLAGS) $(LDFLAGS) $(LLVMAPI_FLAGS) showmsg.cpp
-	rm /tmp/gen.ll
+	clang++ -g $(CFLAGS) $(LDFLAGS) $(LLVMAPI_FLAGS) sum.cpp
+	rm -f /tmp/gen.ll
 	./a.out
 	clang -Wno-override-module /tmp/gen.ll -o /tmp/generated
 	/tmp/generated

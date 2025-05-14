@@ -24,10 +24,15 @@
 #include "semantic_value/JumpStatement.h"
 #include "semantic_value/Statement.h"
 #include "semantic_value/StatementList.h"
-#include "semantic_value/CompountStatement.h"
+#include "semantic_value/CompoundStatement.h"
 #include "semantic_value/FunctionDefinition.h"
 #include "semantic_value/AssignmentExpression.h"
 #include "semantic_value/ArgumentExpressionList.h"
+#include "semantic_value/Initializer.h"
+#include "semantic_value/AssignmentOperator.h"
+#include "semantic_value/UnaryExpression.h"
+#include "semantic_value/IterationStatement.h"
+#include "semantic_value/RelationalExpression.h"
 
 namespace scc {
 

@@ -23,18 +23,23 @@ using namespace scc;
 %token TK_RETURN
 %token TK_VOID
 %token TK_STR
+%token TK_FOR
 %token TK_INT_CONST
 %token TK_CHAR_CONST
 %token TK_IDENTIFIER
+%token TK_ELLIPSIS
+%token TK_LE
+%token TK_INC
+%token TK_PLUS_EQ
 
 %%
 
 root_symbol:
     translation_unit {
       std::cout << "Done parsing" << std::endl;
-      #if 0
-      std::cout << $1 << std::endl;
-      #endif
+      if (getenv("PRINT_CST")) {
+        std::cout << $1 << std::endl;
+      }
 
       TranslationUnit& tu = $1.translation_unit;
       post_parse(tu);
@@ -143,7 +148,7 @@ init_declarator_list:
 init_declarator:
     declarator { $$ = InitDeclarator($1.declarator); }
   | declarator '=' initializer
-    { $$ = InitDeclarator($1.declarator); }
+    { $$ = InitDeclarator($1.declarator, $3.initializer); }
   ;
 
 declarator:
@@ -166,6 +171,9 @@ pointer:
   ;
 
 initializer:
+    assignment_expression {
+      $$ = Initializer($1.assignment_expression);
+    }
   ;
 
 direct_declarator:
@@ -180,6 +188,10 @@ direct_declarator:
 
 parameter_type_list:
     parameter_list
+  | parameter_list ',' TK_ELLIPSIS {
+      $1.declaration_list.hasEllipsis = true;
+      $$ = $1;
+    }
   ;
 
 parameter_list:
@@ -196,15 +208,19 @@ parameter_declaration:
         InitDeclarator($2.declarator)));
     }
   | declaration_specifiers opt_abstract_declarator {
-      $$ = Declaration($1.declaration_specifiers, InitDeclaratorList());
+      $$ = Declaration($1.declaration_specifiers, $2.init_declarator_list);
     }
   ;
 
 opt_abstract_declarator:
     abstract_declarator
-  | ;
+  | { $$ = InitDeclaratorList(); };
 
 abstract_declarator:
+    pointer {
+      $$ = InitDeclaratorList(InitDeclarator(
+        Declarator($1.pointer, DirectDeclarator())));
+    }
   ;
 
 // Begin Statements
@@ -228,6 +244,18 @@ statement:
     }
   | jump_statement {
       $$ = Statement($1.jump_statement);
+    }
+  | compound_statement {
+      $$ = Statement($1.compound_statement);
+    }
+  | iteration_statement {
+      $$ = Statement($1.iteration_statement);
+    }
+  ;
+
+iteration_statement:
+    TK_FOR '(' opt_expression ';' opt_expression ';' opt_expression ')' statement {
+      $$ = IterationStatement(IterationStatement_FOR, $3.expression, $5.expression, $7.expression, $9.statement);
     }
   ;
 
@@ -253,7 +281,8 @@ compound_statement:
 
 opt_expression:
     expression
-  | ;
+  | { $$ = Expression(); }
+  ;
 
 expression:
     assignment_expression {
@@ -264,9 +293,17 @@ expression:
 
 assignment_expression:
     conditional_expression {
-      assert($1.tag == SV_POSTFIX_EXPRESSION);
-      $$ = AssignmentExpression($1.postfix_expression);
+      assert($1.tag == SV_RELATIONAL_EXPRESSION);
+      $$ = AssignmentExpression($1.relational_expression);
     }
+  | unary_expression assignment_operator assignment_expression {
+      $$ = $3.assignment_expression.addItem($1.unary_expression, $2.assignment_operator);
+    }
+  ;
+
+assignment_operator:
+    TK_PLUS_EQ { $$ = AssignmentOperator(AssignmentOperator::PLUS_EQ); }
+  | '=' { $$ = AssignmentOperator(AssignmentOperator::EQ); }
   ;
 
 conditional_expression:
@@ -298,7 +335,14 @@ equality_expression:
   ;
 
 relational_expression:
-    shift_expression
+    shift_expression {
+      assert($1.tag == SV_UNARY_EXPRESSION);
+      $$ = RelationalExpression($1.unary_expression);
+    }
+  | relational_expression TK_LE shift_expression {
+      assert($3.tag == SV_UNARY_EXPRESSION);
+      $$ = $1.relational_expression.addItem(RelationalOp_LE, $3.unary_expression);
+    }
   ;
 
 shift_expression:
@@ -318,7 +362,12 @@ cast_expression:
   ;
 
 unary_expression:
-    postfix_expression
+    postfix_expression {
+      $$ = UnaryExpression($1.postfix_expression);
+    }
+  | TK_INC unary_expression {
+      $$ = UnaryExpression(UnaryExpression_PREINC, $2.unary_expression);
+    }
   ;
 
 postfix_expression:

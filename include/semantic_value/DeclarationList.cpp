@@ -1,4 +1,4 @@
-#include "semantic_value/DeclarationList.h"
+#include "DeclarationList.h"
 
 namespace scc { 
 CreateListTypeImpl(Declaration)

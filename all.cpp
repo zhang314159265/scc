@@ -18,3 +18,4 @@
 #include "semantic_value/PrimaryExpression.cpp"
 #include "semantic_value/PostfixExpression.cpp"
 #include "semantic_value/ExternalDeclaration.cpp"
+#include "semantic_value/Statement.cpp"

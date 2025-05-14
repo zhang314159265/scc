@@ -73,6 +73,32 @@
     return os; \
   }
 
+// Left associative expression chain
+#define CreateLeftAssocExprChain(ParentType, SubType, OpType) \
+  class ParentType { \
+   public: \
+    ParentType() {} \
+    ParentType(const SubType& firstitem) { \
+      this->firstitem = firstitem; \
+    } \
+    \
+    ParentType& addItem(OpType op, const SubType& item) { \
+      pairlist.emplace_back(op, item); \
+      return * this; \
+    } \
+   public: \
+    SubType firstitem; \
+    std::vector<std::pair<OpType, SubType>> pairlist; \
+    friend std::ostream& operator<<(std::ostream& os, const ParentType& parent) { \
+      os << #ParentType " " << parent.pairlist.size() << std::endl; \
+      os << "firstitem: " << parent.firstitem << std::endl; \
+      for (auto &pair : parent.pairlist) { \
+        os << pair.first << " " << pair.second; \
+      } \
+      return os; \
+    }; \
+  };
+
 
 // Compose type
 #define CreateComposeType2Decl(ComposeType, Type1, item1, Type2, item2) \
@@ -199,6 +225,7 @@ class ResultType { \
     case ResultType ## _ ## Type2: \
       return #ResultType "_" # Type2; \
     default: \
+      std::cout << "Invalid tag " << tag << std::endl; \
       assert(0); \
     } \
   } \

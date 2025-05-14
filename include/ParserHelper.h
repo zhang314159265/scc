@@ -12,7 +12,11 @@ void post_parse(TranslationUnit& tu) {
   llvm::LLVMContext C;
   llvm::Module M("scc generated module", C);
 
-  to_llir(tu, M);
+  LowerContext LC = {
+    .C = &C,
+    .M = &M,
+  };
+  to_llir(tu, LC);
 
   M.print(llvm::errs(), NULL);
   const std::string &path = "/tmp/gen.ll";

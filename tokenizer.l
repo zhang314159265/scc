@@ -25,6 +25,12 @@ unsigned { return TK_UNSIGNED; }
 char { return TK_CHAR; }
 void { return TK_VOID; }
 return { return TK_RETURN; }
+for { return TK_FOR; }
+
+[.][.][.] { return TK_ELLIPSIS; }
+[<][=] { return TK_LE; }
+[+][+] { return TK_INC; }
+[+][=] { return TK_PLUS_EQ; }
 
 ["]([^"]*)["] { 
   // don't support escaped double-quote yet

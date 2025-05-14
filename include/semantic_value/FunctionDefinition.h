@@ -1,5 +1,5 @@
 #pragma once
-#include "semantic_value/CompountStatement.h"
+#include "semantic_value/CompoundStatement.h"
 
 namespace scc {
 
