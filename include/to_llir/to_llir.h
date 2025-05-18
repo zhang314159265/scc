@@ -135,9 +135,7 @@ LoweredDeclaration to_llir(Declaration& d, LowerContext &LC) {
       llvm::AllocaInst * alloca = B.CreateAlloca(lowered_decl.type, nullptr, lowered_decl.name);
       // handle initializer
       if (lowered_decl.initializer) {
-        B.CreateStore(
-          lowered_decl.initializer,
-          alloca);
+        handleStore(alloca, lowered_decl.initializer, LC);
       }
     }
   }
@@ -168,6 +166,8 @@ llvm::Type *to_llir(TypeSpecifier &ts, LowerContext& LC) {
   switch (ts) {
   case INT:
     return llvm::Type::getInt32Ty(C);
+  case FLOAT:
+    return llvm::Type::getFloatTy(C);
   case CHAR:
     return llvm::Type::getInt8Ty(C);
   case VOID:
@@ -331,6 +331,8 @@ llvm::Value *to_llir(PostfixExpression &pe, LowerContext &LC) {
   auto function = llvm::cast<llvm::Function>(primary);
   auto functionType = function->getFunctionType();
   llvm::FunctionCallee callee(functionType, primary);
+
+  handleCastIfPrintf(function, args, LC);
   return B.CreateCall(callee, args);
 }
 
@@ -364,6 +366,10 @@ llvm::Value *to_llir(Constant &con, LowerContext &LC) {
       llvm::Type::getInt32Ty(C),
       con.ival
     );
+  case Constant_double:
+    return llvm::ConstantFP::get(
+      llvm::Type::getDoubleTy(C),
+      con.dval);
   case Constant_char:
     assert(0);
   default:

@@ -16,6 +16,7 @@ using namespace scc;
 %debug
 
 %token TK_INT
+%token TK_FLOAT
 %token TK_CONST
 %token TK_VOLATILE
 %token TK_UNSIGNED
@@ -25,6 +26,7 @@ using namespace scc;
 %token TK_STR
 %token TK_FOR
 %token TK_INT_CONST
+%token TK_FLOAT_CONST
 %token TK_CHAR_CONST
 %token TK_IDENTIFIER
 %token TK_ELLIPSIS
@@ -131,6 +133,7 @@ type_specifier:
     TK_UNSIGNED
   | TK_CHAR { $$ = TypeSpecifier::CHAR; }
   | TK_INT { $$ = TypeSpecifier::INT; }
+  | TK_FLOAT { $$ = TypeSpecifier::FLOAT; }
   | TK_VOID { $$ = TypeSpecifier::VOID; }
   ;
 
@@ -438,6 +441,7 @@ primary_expression:
 constant:
     TK_INT_CONST { $$ = Constant($1.ival); }
   | TK_CHAR_CONST { $$ = Constant((char) $1.ival); }
+  | TK_FLOAT_CONST { $$ = Constant($1.dval); }
   ;
 
 

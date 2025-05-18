@@ -4,6 +4,6 @@
 
 namespace scc {
 
-CreateUnionType2Decl(Constant, int, ival, char, cval);
+CreateUnionType3Decl(Constant, int, ival, char, cval, double, dval);
 
 }

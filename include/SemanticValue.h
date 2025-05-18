@@ -43,6 +43,7 @@ enum {
   SV_NONE,
   SV_STR,
   SV_INT,
+  SV_DOUBLE,
   SV_TYPE_SPECIFIER,
   SV_TYPE_QUALIFIER,
   SV_DIRECT_DECLARATOR,
@@ -69,6 +70,7 @@ class SemanticValue {
   explicit SemanticValue(const char *s) : tag(SV_STR), str(s) { }
   explicit SemanticValue(const char *s, int len) : tag(SV_STR), str(s, len) { }
   explicit SemanticValue(int ival) : tag(SV_INT), ival(ival) { }
+  explicit SemanticValue(double dval) : tag(SV_DOUBLE), dval(dval) { }
   // explicit SemanticValue(llvm::Type *_type) : tag(SV_TYPE), type(_type) { }
   explicit SemanticValue(TypeQualifier _qual) : tag(SV_TYPE_QUALIFIER), qual(_qual) { }
   /* implicit */ SemanticValue(TypeSpecifier _spec) : tag(SV_TYPE_SPECIFIER), spec(_spec) { }
@@ -86,6 +88,7 @@ class SemanticValue {
   int tag;
   union {
     int ival;
+    double dval;
     // llvm::Type* type;
     TypeQualifier qual;
     TypeSpecifier spec;
@@ -110,6 +113,9 @@ std::ostream& operator<<(std::ostream& os, const SemanticValue &sv) {
     break;
   case SV_INT:
     os << sv.ival;
+    break;
+  case SV_DOUBLE:
+    os << sv.dval;
     break;
   #if 0
   case SV_TYPE: {

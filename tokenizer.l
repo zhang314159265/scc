@@ -19,6 +19,7 @@ DIGIT [0-9]
 [/][*](.|\n)*[*][/] { /* ignore comment */ }
 
 int { return TK_INT; }
+float { return TK_FLOAT; }
 const { return TK_CONST; }
 volatile { return TK_VOLATILE; }
 unsigned { return TK_UNSIGNED; }
@@ -44,6 +45,7 @@ else { return TK_ELSE; }
 }
 
 {DIGIT}+ { int ival = atoi(yytext); yylval = scc::SemanticValue(ival); return TK_INT_CONST; }
+{DIGIT}+[.]{DIGIT}+ { double dval = atof(yytext); yylval = scc::SemanticValue(dval); return TK_FLOAT_CONST; }
 
 {LETTER_}({LETTER_}|{DIGIT})* { yylval = scc::SemanticValue(yytext); return TK_IDENTIFIER; }
 

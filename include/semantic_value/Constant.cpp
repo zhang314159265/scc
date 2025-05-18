@@ -2,6 +2,6 @@
 
 namespace scc {
 
-CreateUnionType2Impl(Constant, int, ival, char, cval);
+CreateUnionType3Impl(Constant, int, ival, char, cval, double, dval);
 
 }

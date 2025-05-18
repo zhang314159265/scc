@@ -44,6 +44,20 @@ llvm::Value *handleRelational(llvm::Value *lhs, llvm::Value *rhs, RelationalOp o
   }
 }
 
+void handleStore(llvm::Value *dst, llvm::Value *val, LowerContext &LC) {
+  // do necessary casting before assignment
+  llvm::IRBuilder<> &B = *LC.B;
+
+  // double to float casting
+  if (val->getType()->isDoubleTy() && llvm::isa<llvm::Constant>(val)) {
+    llvm::AllocaInst *alloca = llvm::dyn_cast<llvm::AllocaInst>(dst);
+    if (alloca && alloca->getAllocatedType()->isFloatTy()) {
+      val = B.CreateFPTrunc(val, alloca->getAllocatedType());
+    }
+  }
+  B.CreateStore(val, dst);
+}
+
 void handleAssignment(llvm::Value *lhs, llvm::Value *rhs, AssignmentOperator op, LowerContext &LC) {
   llvm::IRBuilder<> &B = *LC.B;
   if (op == AssignmentOperator::PLUS_EQ) {
@@ -51,12 +65,12 @@ void handleAssignment(llvm::Value *lhs, llvm::Value *rhs, AssignmentOperator op,
     llvm::Value *lhsValue = derefIfNeeded(lhs, LC);
     llvm::Value *rhsValue = derefIfNeeded(rhs, LC);
     llvm::Value *result = B.CreateAdd(lhsValue, rhsValue);
-    B.CreateStore(result, lhs);
+    handleStore(lhs, result, LC);
     return;
   }
   if (op == AssignmentOperator::EQ) {
     llvm::Value *rhsValue = derefIfNeeded(rhs, LC);
-    B.CreateStore(rhsValue, lhs);
+    handleStore(lhs, rhsValue, LC);
     return;
   }
   assert(0); 
@@ -91,6 +105,20 @@ std::string replaceAll(std::string str, const std::string &from, const std::stri
 std::string handleStringEscape(const std::string &s) {
   std::string out = replaceAll(s, "\\n", "\n");
   return out;
+}
+
+void handleCastIfPrintf(llvm::Function *function, std::vector<llvm::Value*> &args, LowerContext &LC) {
+  // cast float arg to double for printf
+  llvm::LLVMContext &C = *LC.C;
+  llvm::IRBuilder<> &B = *LC.B;
+  if (function->getName() == "printf") {
+    for (int i = 0; i < args.size(); ++i) {
+      llvm::Value *arg = derefIfNeeded(args[i], LC);
+      if (arg->getType()->isFloatTy()) {
+        args[i] = B.CreateFPExt(arg, llvm::Type::getDoubleTy(C));
+      }
+    }
+  }
 }
 
 }

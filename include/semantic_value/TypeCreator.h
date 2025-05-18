@@ -186,6 +186,41 @@ class ResultType { \
   friend std::ostream& operator<<(std::ostream& os, const ResultType& parent); \
 };
 
+#define CreateUnionType3Decl(ResultType, Type1, val1, Type2, val2, Type3, val3) \
+enum { \
+  ResultType ## _ ## None, \
+  ResultType ## _ ## Type1, \
+  ResultType ## _ ## Type2, \
+  ResultType ## _ ## Type3, \
+}; \
+\
+class ResultType { \
+ public: \
+  ResultType() : tag(ResultType ## _ ## None) {} \
+  ResultType(const Type1& val1); \
+  ResultType(const Type2& val2); \
+  ResultType(const Type3& val3); \
+  static const char *tag2str(int tag) { \
+    switch (tag) { \
+    case ResultType ## _ ## Type1: \
+      return #ResultType "_" # Type1; \
+    case ResultType ## _ ## Type2: \
+      return #ResultType "_" # Type2; \
+    case ResultType ## _ ## Type3: \
+      return #ResultType "_" # Type3; \
+    default: \
+      assert(0); \
+    } \
+  } \
+ public: \
+  int tag; \
+  Type1 val1; \
+  Type2 val2; \
+  Type3 val3; \
+  friend std::ostream& operator<<(std::ostream& os, const ResultType& parent); \
+};
+
+
 
 #define CreateUnionType2Impl(ResultType, Type1, val1, Type2, val2) \
 ResultType::ResultType(const Type1& val1) : tag(ResultType ## _ ## Type1), val1(val1) {} \
@@ -198,6 +233,29 @@ std::ostream& operator<<(std::ostream& os, const ResultType& parent) { \
     break; \
   case ResultType ## _ ## Type2: \
     os << parent.val2; \
+    break; \
+  default: \
+    assert(0); \
+    break; \
+  } \
+  return os; \
+}
+
+#define CreateUnionType3Impl(ResultType, Type1, val1, Type2, val2, Type3, val3) \
+ResultType::ResultType(const Type1& val1) : tag(ResultType ## _ ## Type1), val1(val1) {} \
+ResultType::ResultType(const Type2& val2) : tag(ResultType ## _ ## Type2), val2(val2) {} \
+ResultType::ResultType(const Type3& val3) : tag(ResultType ## _ ## Type3), val3(val3) {} \
+std::ostream& operator<<(std::ostream& os, const ResultType& parent) { \
+  os << #ResultType << "(tag " << ResultType::tag2str(parent.tag) << ")" << std::endl; \
+  switch (parent.tag) { \
+  case ResultType ## _ ## Type1: \
+    os << parent.val1; \
+    break; \
+  case ResultType ## _ ## Type2: \
+    os << parent.val2; \
+    break; \
+  case ResultType ## _ ## Type3: \
+    os << parent.val3; \
     break; \
   default: \
     assert(0); \

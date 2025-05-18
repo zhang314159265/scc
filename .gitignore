@@ -4,6 +4,7 @@ scc.dSYM
 TODO
 a.out
 a.out.dSYM
+misc.ll
 
 # generated tokenizer
 tokenizer.cpp
