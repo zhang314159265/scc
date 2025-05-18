@@ -1,5 +1,6 @@
 .*.swp
 scc
+scc.dSYM
 TODO
 a.out
 a.out.dSYM
