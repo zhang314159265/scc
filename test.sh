@@ -31,5 +31,6 @@ function testit() {
 # make scc
 testit showmsg "LLVM is cool!"
 testit sum "Sum is 5050"
+testit ifelse "d is 5"
 
 logprogress "SUMMARY: PASS $cnt TESTS"

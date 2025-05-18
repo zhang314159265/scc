@@ -1,6 +1,7 @@
 #include "Statement.h"
 #include "CompoundStatement.h"
 #include "IterationStatement.h"
+#include "SelectiveStatement.h"
 
 namespace scc {
 
@@ -14,6 +15,10 @@ Statement::Statement(const CompoundStatement& compound_statement) : tag(Statemen
 
 Statement::Statement(const IterationStatement& iteration_statement) : tag(Statement_IterationStatement) { 
   this->iteration_statement = std::make_shared<IterationStatement>(iteration_statement);
+}
+
+Statement::Statement(const SelectiveStatement& selective_statement) : tag(Statement_SelectiveStatement) { 
+  this->selective_statement = std::make_shared<SelectiveStatement>(selective_statement);
 }
 
 std::ostream& operator<<(std::ostream& os, const Statement& parent) {
@@ -30,6 +35,9 @@ std::ostream& operator<<(std::ostream& os, const Statement& parent) {
     break;
   case Statement_IterationStatement:
     os << *parent.iteration_statement;
+    break;
+  case Statement_SelectiveStatement:
+    os << *parent.selective_statement;
     break;
   default:
     assert(0);

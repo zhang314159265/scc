@@ -31,6 +31,8 @@ using namespace scc;
 %token TK_LE
 %token TK_INC
 %token TK_PLUS_EQ
+%token TK_IF
+%token TK_ELSE
 
 %%
 
@@ -251,6 +253,18 @@ statement:
   | iteration_statement {
       $$ = Statement($1.iteration_statement);
     }
+  | selection_statement {
+      $$ = Statement($1.selective_statement);
+    }
+  ;
+
+selection_statement:
+    TK_IF '(' expression ')' statement TK_ELSE statement {
+      $$ = SelectiveStatement(SelectiveStatement_IFELSE,
+        $3.expression,
+        $5.statement,
+        $7.statement);
+    }
   ;
 
 iteration_statement:
@@ -336,12 +350,16 @@ equality_expression:
 
 relational_expression:
     shift_expression {
-      assert($1.tag == SV_UNARY_EXPRESSION);
-      $$ = RelationalExpression($1.unary_expression);
+      assert($1.tag == SV_ADDITIVE_EXPRESSION);
+      $$ = RelationalExpression($1.additive_expression);
     }
   | relational_expression TK_LE shift_expression {
-      assert($3.tag == SV_UNARY_EXPRESSION);
-      $$ = $1.relational_expression.addItem(RelationalOp_LE, $3.unary_expression);
+      assert($3.tag == SV_ADDITIVE_EXPRESSION);
+      $$ = $1.relational_expression.addItem(RelationalOp_LE, $3.additive_expression);
+    }
+  | relational_expression '>' shift_expression {
+      assert($3.tag == SV_ADDITIVE_EXPRESSION);
+      $$ = $1.relational_expression.addItem(RelationalOp_GT, $3.additive_expression);
     }
   ;
 
@@ -350,7 +368,18 @@ shift_expression:
   ;
 
 additive_expression:
-    multiplicative_expression
+    multiplicative_expression {
+      assert($1.tag == SV_UNARY_EXPRESSION);
+      $$ = AdditiveExpression($1.unary_expression);
+    }
+  | additive_expression '+' multiplicative_expression {
+      assert($3.tag == SV_UNARY_EXPRESSION);
+      $$ = $1.additive_expression.addItem(AdditiveOp_ADD, $3.unary_expression);
+    }
+  | additive_expression '-' multiplicative_expression {
+      assert($3.tag == SV_UNARY_EXPRESSION);
+      $$ = $1.additive_expression.addItem(AdditiveOp_SUB, $3.unary_expression);
+    }
   ;
 
 multiplicative_expression:

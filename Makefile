@@ -7,8 +7,9 @@ LDFLAGS := -L /opt/homebrew/Cellar/zstd/1.5.7/lib
 scc:
 	lex -o tokenizer.cpp tokenizer.l
 	bison parser.y -o parser.cpp
-	# clang++ $(CFLAGS) $(LDFLAGS) $(LLVMAPI_FLAGS) -Iinclude -ll -DSTANDALONE_TOKENIZER tokenizer.cpp all.cpp
-	# ./a.out < inputs/sum.c
+	# clang++ $(CFLAGS) $(LDFLAGS) $(LLVMAPI_FLAGS) -Iinclude -ll -DSTANDALONE_TOKENIZER tokenizer.cpp all.cpp -o scc
+	# ./scc < inputs/misc.c
+	# false
 	clang++ -g $(CFLAGS) $(LDFLAGS) $(LLVMAPI_FLAGS) -Iinclude -ll -ly parser.cpp all.cpp -o scc
 	# process launch -i inputs/showmsg.c
 	rm -f /tmp/gen.ll

@@ -1,17 +1,23 @@
 #pragma once
 
+#include "AdditiveExpression.h"
+
 namespace scc {
 
-#define ShiftExpression UnaryExpression
+#define ShiftExpression AdditiveExpression
 
 enum RelationalOp {
   RelationalOp_LE,
+  RelationalOp_GT,
 };
 
 static std::ostream &operator<<(std::ostream& os, const RelationalOp &op) {
   switch (op) {
   case RelationalOp_LE:
     os << "<=";
+    break;
+  case RelationalOp_GT:
+    os << ">";
     break;
   default:
     assert(0);

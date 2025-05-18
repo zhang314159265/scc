@@ -26,6 +26,8 @@ char { return TK_CHAR; }
 void { return TK_VOID; }
 return { return TK_RETURN; }
 for { return TK_FOR; }
+if { return TK_IF; }
+else { return TK_ELSE; }
 
 [.][.][.] { return TK_ELLIPSIS; }
 [<][=] { return TK_LE; }

@@ -6,6 +6,7 @@ namespace scc {
 
 class CompoundStatement;
 class IterationStatement;
+class SelectiveStatement;
 
 enum {
   Statement_None,
@@ -13,6 +14,7 @@ enum {
   Statement_JumpStatement,
   Statement_CompoundStatement,
   Statement_IterationStatement,
+  Statement_SelectiveStatement,
 };
 
 class Statement {
@@ -22,6 +24,7 @@ class Statement {
   Statement(const JumpStatement& jump_statement);
   Statement(const CompoundStatement& compound_statement);
   Statement(const IterationStatement& iteration_statement);
+  Statement(const SelectiveStatement& selective_statement);
   static const char *tag2str(int tag) {
     switch (tag) {
     case Statement_ExpressionStatement:
@@ -32,6 +35,8 @@ class Statement {
       return "Statement_CompoundStatement";
     case Statement_IterationStatement:
       return "Statement_IterationStatement";
+    case Statement_SelectiveStatement:
+      return "Statement_SelectiveStatement";
     default:
       assert(0);
     }
@@ -43,6 +48,7 @@ class Statement {
   std::shared_ptr<CompoundStatement> compound_statement;
   // use shared_ptr here to handle circular dependency
   std::shared_ptr<IterationStatement> iteration_statement;
+  std::shared_ptr<SelectiveStatement> selective_statement;
   friend std::ostream& operator<<(std::ostream& os, const Statement &parent);
 };
 

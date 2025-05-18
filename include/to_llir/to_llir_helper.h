@@ -15,6 +15,20 @@ llvm::Value *derefIfNeeded(llvm::Value *valueInp, LowerContext &LC) {
   }
 }
 
+llvm::Value *handleAdditive(llvm::Value *lhs, llvm::Value *rhs, AdditiveOp op, LowerContext &LC) {
+  llvm::IRBuilder<> &B = *LC.B;
+  lhs = derefIfNeeded(lhs, LC);
+  rhs = derefIfNeeded(rhs, LC);
+  switch (op) {
+  case AdditiveOp_ADD:
+    return B.CreateAdd(lhs, rhs);
+  case AdditiveOp_SUB:
+    return B.CreateSub(lhs, rhs);
+  default:
+    assert(0);
+  }
+}
+
 llvm::Value *handleRelational(llvm::Value *lhs, llvm::Value *rhs, RelationalOp op, LowerContext &LC) {
   llvm::IRBuilder<> &B = *LC.B;
   lhs = derefIfNeeded(lhs, LC);
@@ -23,6 +37,8 @@ llvm::Value *handleRelational(llvm::Value *lhs, llvm::Value *rhs, RelationalOp o
   case RelationalOp_LE:
     // TODO this only works for signed integer?
     return B.CreateICmpSLE(lhs, rhs);
+  case RelationalOp_GT:
+    return B.CreateICmpSGT(lhs, rhs);
   default:
     assert(0);
   }

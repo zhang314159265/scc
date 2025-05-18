@@ -33,6 +33,8 @@
 #include "semantic_value/UnaryExpression.h"
 #include "semantic_value/IterationStatement.h"
 #include "semantic_value/RelationalExpression.h"
+#include "semantic_value/AdditiveExpression.h"
+#include "semantic_value/SelectiveStatement.h"
 
 namespace scc {
 

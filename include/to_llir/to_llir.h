@@ -48,6 +48,7 @@ void to_llir(CompoundStatement &cs, LowerContext &LC);
 void to_llir(ExpressionStatement &es, LowerContext &LC);
 void to_llir(JumpStatement &js, LowerContext &LC);
 void to_llir(IterationStatement &is, LowerContext &LC);
+void to_llir(SelectiveStatement &ss, LowerContext &LC);
 
 llvm::Value *to_llir(Expression &e, LowerContext &LC);
 llvm::Value *to_llir(AssignmentExpression &ae, LowerContext &LC);
@@ -56,6 +57,7 @@ llvm::Value *to_llir(PrimaryExpression &ce, LowerContext &LC);
 llvm::Value *to_llir(Constant &con, LowerContext &LC);
 llvm::Value *to_llir(UnaryExpression &ue, LowerContext &LC);
 llvm::Value *to_llir(RelationalExpression &re, LowerContext &LC);
+llvm::Value *to_llir(AdditiveExpression &ae, LowerContext &LC);
 
 void to_llir(TranslationUnit& tu, LowerContext &LC) {
   for (auto &external_declaration : tu.items) {
@@ -124,11 +126,23 @@ LoweredDeclaration to_llir(Declaration& d, LowerContext &LC) {
     return {std::string(), type};
   }
 
-  assert(d.init_declarator_list.items.size() == 1);
+  // return the result of the last InitDecorator
+  LoweredDeclaration lowered_decl{std::string(), nullptr};
   for (auto &init_declarator : d.init_declarator_list.items) {
-    return to_llir(init_declarator, type, LC);
+    lowered_decl = to_llir(init_declarator, type, LC);
+    if (LC.B) { // local variable
+      llvm::IRBuilder<> &B = *LC.B;
+      llvm::AllocaInst * alloca = B.CreateAlloca(lowered_decl.type, nullptr, lowered_decl.name);
+      // handle initializer
+      if (lowered_decl.initializer) {
+        B.CreateStore(
+          lowered_decl.initializer,
+          alloca);
+      }
+    }
   }
-  assert(0);
+
+  return lowered_decl;
 }
 
 llvm::Type *to_llir(DeclarationSpecifiers &ds, LowerContext &LC) {
@@ -223,18 +237,6 @@ LoweredDeclaration to_llir(DirectDeclarator &dd, llvm::Type *type, LowerContext&
 void to_llir(CompoundStatement &cs, LowerContext &LC) {
   for (auto &declaration : cs.declaration_list.items) {
     LoweredDeclaration lowered_decl = to_llir(declaration, LC);
-
-    // create alloca
-    assert(LC.B);
-    llvm::IRBuilder<> &B = *LC.B;
-    llvm::AllocaInst * alloca = B.CreateAlloca(lowered_decl.type, nullptr, lowered_decl.name);
-
-    // handle initializer
-    if (lowered_decl.initializer) {
-      B.CreateStore(
-        lowered_decl.initializer,
-        alloca);
-    }
   }
   for (auto &statement : cs.statement_list.items) {
     to_llir(statement, LC);
@@ -254,6 +256,9 @@ void to_llir(Statement &st, LowerContext &LC) {
     break;
   case Statement_CompoundStatement:
     to_llir(*st.compound_statement, LC);
+    break;
+  case Statement_SelectiveStatement:
+    to_llir(*st.selective_statement, LC);
     break;
   default:
     std::cout << st.tag << std::endl;
@@ -406,6 +411,7 @@ llvm::Value *to_llir(RelationalExpression &re, LowerContext &LC) {
 }
 
 void to_llir(IterationStatement &is, LowerContext &LC) {
+  assert(is.tag == IterationStatement_FOR); // TODO only support for loop so far
   assert(LC.B);
   llvm::LLVMContext &C = *LC.C;
   llvm::Function *F = LC.F;
@@ -438,6 +444,48 @@ void to_llir(IterationStatement &is, LowerContext &LC) {
 
   // setup LC.B properly for later
   B.SetInsertPoint(exit);
+}
+
+llvm::Value *to_llir(AdditiveExpression &ae, LowerContext &LC) {
+  llvm::Value *result = to_llir(ae.firstitem, LC);
+  for (auto& pair : ae.pairlist) {
+    auto op = pair.first;
+    llvm::Value *rhs = to_llir(pair.second, LC);
+    result = handleAdditive(result, rhs, op, LC);
+  }
+  return result;
+}
+
+void to_llir(SelectiveStatement &ss, LowerContext &LC) {
+  // TODO only support ifelse so far
+  assert(ss.tag == SelectiveStatement_IFELSE);
+  llvm::IRBuilder<> &B = *LC.B;
+  llvm::LLVMContext &C = *LC.C;
+  llvm::Function *F = LC.F;
+
+  // Create BasicBlocks
+  llvm::BasicBlock *trueBlock = llvm::BasicBlock::Create(C, "trueBlock", F);
+  llvm::BasicBlock *falseBlock = llvm::BasicBlock::Create(C, "falseBlock", F);
+  llvm::BasicBlock *nextBlock = llvm::BasicBlock::Create(C, "nextBlock", F);
+
+  llvm::Value *condval = to_llir(ss.expr, LC);
+  B.CreateCondBr(condval, trueBlock, falseBlock);
+
+  { // handle true block
+    B.SetInsertPoint(trueBlock);
+    to_llir(ss.stmt1, LC);
+    B.CreateBr(nextBlock);
+  }
+
+  {
+    // handle false block
+    B.SetInsertPoint(falseBlock);
+    to_llir(ss.stmt2, LC);
+    B.CreateBr(nextBlock);
+  }
+
+  // properly setup LC.B for later
+  B.SetInsertPoint(nextBlock);
 }
 
 }
