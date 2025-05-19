@@ -4,10 +4,16 @@
 
 namespace scc {
 
+llvm::Value *handleImplicitCast(llvm::Value *val, llvm::Type *dstTy, LowerContext &LC);
+
 llvm::Type *getRealType(llvm::Value *val) {
   if (llvm::isa<llvm::AllocaInst>(val)) {
     llvm::AllocaInst *inst = llvm::cast<llvm::AllocaInst>(val);
     return inst->getAllocatedType();
+  }
+  if (llvm::isa<llvm::GetElementPtrInst>(val)) {
+    llvm::GetElementPtrInst *inst = llvm::cast<llvm::GetElementPtrInst>(val);
+    return inst->getResultElementType();
   }
 
   return val->getType(); 
@@ -29,15 +35,31 @@ llvm::Value *derefIfNeeded(llvm::Value *valueInp, LowerContext &LC) {
   }
 }
 
+llvm::Value *CreateAdd(llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &B) {
+  if (lhs->getType()->isFloatingPointTy()) {
+    return B.CreateFAdd(lhs, rhs);
+  } else {
+    return B.CreateAdd(lhs, rhs);
+  }
+}
+
+llvm::Value *CreateSub(llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &B) {
+  if (lhs->getType()->isFloatingPointTy()) {
+    return B.CreateFSub(lhs, rhs);
+  } else {
+    return B.CreateSub(lhs, rhs);
+  }
+}
+
 llvm::Value *handleAdditive(llvm::Value *lhs, llvm::Value *rhs, AdditiveOp op, LowerContext &LC) {
   llvm::IRBuilder<> &B = *LC.B;
   lhs = derefIfNeeded(lhs, LC);
   rhs = derefIfNeeded(rhs, LC);
   switch (op) {
   case AdditiveOp_ADD:
-    return B.CreateAdd(lhs, rhs);
+    return CreateAdd(lhs, rhs, B);
   case AdditiveOp_SUB:
-    return B.CreateSub(lhs, rhs);
+    return CreateSub(lhs, rhs, B);
   default:
     assert(0);
   }
@@ -64,18 +86,7 @@ void handleStore(llvm::Value *dst, llvm::Value *val, LowerContext &LC) {
   // do necessary casting before assignment
   llvm::IRBuilder<> &B = *LC.B;
 
-  // double to float casting
-  if (val->getType()->isDoubleTy()) {
-    llvm::AllocaInst *alloca = llvm::dyn_cast<llvm::AllocaInst>(dst);
-    if (alloca && alloca->getAllocatedType()->isFloatTy()) {
-      val = B.CreateFPTrunc(val, alloca->getAllocatedType());
-    }
-
-    llvm::GetElementPtrInst *gep = llvm::dyn_cast<llvm::GetElementPtrInst>(dst);
-    if (gep && gep->getResultElementType()->isFloatTy()) {
-      val = B.CreateFPTrunc(val, gep->getResultElementType());
-    }
-  }
+  val = handleImplicitCast(val, getRealType(dst), LC);
   B.CreateStore(val, dst);
 }
 
@@ -84,8 +95,8 @@ void handleAssignment(llvm::Value *lhs, llvm::Value *rhs, AssignmentOperator op,
   if (op == AssignmentOperator::PLUS_EQ) {
     // load lhs value
     llvm::Value *lhsValue = derefIfNeeded(lhs, LC);
-    llvm::Value *rhsValue = derefIfNeeded(rhs, LC);
-    llvm::Value *result = B.CreateAdd(lhsValue, rhsValue);
+    llvm::Value *rhsValue = handleImplicitCast(derefIfNeeded(rhs, LC), lhsValue->getType(), LC);
+    llvm::Value *result = CreateAdd(lhsValue, rhsValue, B);
     handleStore(lhs, result, LC);
     return;
   }
@@ -151,10 +162,17 @@ llvm::Value *handleImplicitCast(llvm::Value *val, llvm::Type *dstTy, LowerContex
   }
 
   // i32 -> double
-  if (val->getType()->isIntegerTy(32) && dstTy->isDoubleTy()) {
+  if (val->getType()->isIntegerTy(32) && dstTy->isFloatingPointTy()) {
     llvm::IRBuilder<> &B = *LC.B;
     return B.CreateSIToFP(val, dstTy);
   }
+
+  // double -> float
+  if (val->getType()->isDoubleTy() && dstTy->isFloatTy()) {
+    llvm::IRBuilder<> &B = *LC.B;
+    return B.CreateFPTrunc(val, dstTy);
+  }
+
   assert(0);
 }
 

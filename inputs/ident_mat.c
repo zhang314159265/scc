@@ -3,6 +3,7 @@ int printf(const char *, ...);
 int main(void) {
   float mat[10][10];
   int i, j;
+  float sum = 0;
 
   for (i = 0; i < 10; ++i) {
     for (j = 0; j < 10; ++j) {
@@ -13,7 +14,6 @@ int main(void) {
   for (i = 0; i < 10; ++i) {
     mat[i][i] = 1;
   }
-  float sum = 0;
   for (i = 0; i < 10; ++i) {
     for (j = 0; j < 10; ++j) {
       sum += mat[i][j];

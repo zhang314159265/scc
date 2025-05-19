@@ -236,12 +236,14 @@ LoweredDeclaration to_llir(DirectDeclarator &dd, llvm::Type *type, LowerContext&
   }
 
   if (constant_expressions.size() > 0) {
-    assert(constant_expressions.size() == 1);
-    llvm::Value *cvalptr = to_llir(*constant_expressions[0], LC);
-    lowered_decl.type = llvm::ArrayType::get(
-      lowered_decl.type,
-      llvm::cast<llvm::ConstantInt>(cvalptr)->getZExtValue()
-    );
+    // process from right to left
+    for (int i = constant_expressions.size() - 1; i >= 0; --i) {
+      llvm::Value *cvalptr = to_llir(*constant_expressions[0], LC);
+      lowered_decl.type = llvm::ArrayType::get(
+        lowered_decl.type,
+        llvm::cast<llvm::ConstantInt>(cvalptr)->getZExtValue()
+      );
+    }
   }
 
   return lowered_decl;
@@ -325,43 +327,39 @@ llvm::Value *to_llir(AssignmentExpression &ae, LowerContext &LC) {
 llvm::Value *to_llir(PostfixExpression &pe, LowerContext &LC) {
   llvm::LLVMContext &C = *LC.C;
   llvm::IRBuilder<> &B = *LC.B;
-  llvm::Value *primary = to_llir(pe.primary_expression, LC);
+  llvm::Value *result = to_llir(pe.primary_expression, LC);
 
-  if (pe.postfixList.size() == 0) {
-    return primary;
-  }
-
-  assert(pe.postfixList.size() == 1);
-  auto &postfix = pe.postfixList[0];
-
-  if (postfix.tag == PostfixExpression_CALL) {
-    std::vector<llvm::Value *> args;
-    for (auto& assignmentExpr : postfix.argument_expression_list_ptr->items) {
-      args.push_back(derefIfNeeded(to_llir(assignmentExpr, LC), LC));
-    }
+  for (auto postfix : pe.postfixList) {
+    if (postfix.tag == PostfixExpression_CALL) {
+      std::vector<llvm::Value *> args;
+      for (auto& assignmentExpr : postfix.argument_expression_list_ptr->items) {
+        args.push_back(derefIfNeeded(to_llir(assignmentExpr, LC), LC));
+      }
+    
+      llvm::Type *primary_type = result->getType();
+      auto ptr_type = llvm::cast<llvm::PointerType>(primary_type);
+      auto function = llvm::cast<llvm::Function>(result);
+      auto functionType = function->getFunctionType();
+      llvm::FunctionCallee callee(functionType, result);
+    
+      if (!handleCastIfPrintf(function, args, LC)) {
+        handleCastForCall(function, args, LC);
+      }
+      result = B.CreateCall(callee, args);
+    } else if (postfix.tag == PostfixExpression_INDEX) {
+      llvm::Value *index = derefIfNeeded(to_llir(*postfix.expression, LC), LC);
   
-    llvm::Type *primary_type = primary->getType();
-    auto ptr_type = llvm::cast<llvm::PointerType>(primary_type);
-    auto function = llvm::cast<llvm::Function>(primary);
-    auto functionType = function->getFunctionType();
-    llvm::FunctionCallee callee(functionType, primary);
-  
-    if (!handleCastIfPrintf(function, args, LC)) {
-      handleCastForCall(function, args, LC);
+      // result[index]
+      result =  B.CreateGEP(
+        getRealType(result),
+        result,
+        {llvm::ConstantInt::get(llvm::Type::getInt32Ty(C), 0), index}
+      );
+    } else {
+      assert(0 && "unsupported postfix");
     }
-    return B.CreateCall(callee, args);
-  } else if (postfix.tag == PostfixExpression_INDEX) {
-    llvm::Value *index = derefIfNeeded(to_llir(*postfix.expression, LC), LC);
-
-    // primary[index]
-    return B.CreateGEP(
-      getRealType(primary),
-      primary,
-      {llvm::ConstantInt::get(llvm::Type::getInt32Ty(C), 0), index}
-    );
-  } else {
-    assert(0 && "unsupported postfix");
   }
+  return result;
 }
 
 llvm::Value *to_llir(PrimaryExpression &pe, LowerContext &LC) {

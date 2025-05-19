@@ -2,7 +2,6 @@
 - jit run llirapi/showmsg.cpp
 
 # TODO
-- check array type in llvm ir <++++
 - try various example C problems for compiling!
   - handle pointer.
 

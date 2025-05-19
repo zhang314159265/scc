@@ -1,18 +1,42 @@
 int printf(const char *, ...);
-double sqrt(double);
 
 int main(void) {
-  float ar[10];
-  int i;
-  int picked = 8;
-
-  /* 
-  ar[3] = 0.5;
-  printf("%f\n", ar[3]); 
-   */
+  float mat[10][10];
+  int i, j;
+  float sum = 0;
+  /*
+  int tot = 0;
   for (i = 0; i < 10; ++i) {
-    ar[i] = sqrt(i);
+    for (j = 0; j < 10; ++j) {
+      tot += 1;
+    }
   }
-  printf("sqrt of %d is %.2f\n", picked, ar[picked]); // 2.83  
+
+  for (i = 0; i < 10; ++i) {
+    for (j = 0; j < 10; ++j) {
+      tot += i;
+    }
+  }
+  printf("tot is %d\n", tot);
+   */
+
+  // mat[2][3] = 5.0;
+
+  for (i = 0; i < 10; ++i) {
+    for (j = 0; j < 10; ++j) {
+      mat[i][j] = 0;
+    }
+  }
+
+  for (i = 0; i < 10; ++i) {
+    mat[i][i] = 1;
+  }
+  // sum += 0.5;
+  for (i = 0; i < 10; ++i) {
+    for (j = 0; j < 10; ++j) {
+      sum += mat[i][j];
+    }
+  }
+  printf("sum is %f\n", sum);
   return 0;
 }
