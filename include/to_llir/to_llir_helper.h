@@ -4,6 +4,35 @@
 
 namespace scc {
 
+#define BINARY_CREATOR_FACTORY(Name) \
+  llvm::Value *Create ## Name(llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &B) { \
+    if (lhs->getType()->isFloatingPointTy()) { \
+      return B.CreateF ## Name(lhs, rhs); \
+    } else { \
+      return B.Create ## Name(lhs, rhs); \
+    } \
+  }
+
+BINARY_CREATOR_FACTORY(Add)
+BINARY_CREATOR_FACTORY(Sub)
+BINARY_CREATOR_FACTORY(Mul)
+
+llvm::Value *CreateDiv(llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &B) {
+  if (lhs->getType()->isFloatingPointTy()) {
+    return B.CreateFDiv(lhs, rhs);
+  } else {
+    return B.CreateUDiv(lhs, rhs);
+  }
+}
+
+llvm::Value *CreateMod(llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &B) {
+  if (lhs->getType()->isFloatingPointTy()) {
+    return B.CreateFRem(lhs, rhs);
+  } else {
+    return B.CreateURem(lhs, rhs);
+  }
+}
+
 llvm::Value *handleImplicitCast(llvm::Value *val, llvm::Type *dstTy, LowerContext &LC);
 
 llvm::Type *getRealType(llvm::Value *val) {
@@ -35,19 +64,19 @@ llvm::Value *derefIfNeeded(llvm::Value *valueInp, LowerContext &LC) {
   }
 }
 
-llvm::Value *CreateAdd(llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &B) {
-  if (lhs->getType()->isFloatingPointTy()) {
-    return B.CreateFAdd(lhs, rhs);
-  } else {
-    return B.CreateAdd(lhs, rhs);
-  }
-}
-
-llvm::Value *CreateSub(llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &B) {
-  if (lhs->getType()->isFloatingPointTy()) {
-    return B.CreateFSub(lhs, rhs);
-  } else {
-    return B.CreateSub(lhs, rhs);
+llvm::Value *handleMultiplicative(llvm::Value *lhs, llvm::Value *rhs, MultiplicativeOp op, LowerContext &LC) {
+  llvm::IRBuilder<> &B = *LC.B;
+  lhs = derefIfNeeded(lhs, LC);
+  rhs = derefIfNeeded(rhs, LC);
+  switch (op) {
+  case MultiplicativeOp_MUL:
+    return CreateMul(lhs, rhs, B);
+  case MultiplicativeOp_DIV:
+    return CreateDiv(lhs, rhs, B);
+  case MultiplicativeOp_MOD:
+    return CreateMod(lhs, rhs, B);
+  default:
+    assert(0);
   }
 }
 

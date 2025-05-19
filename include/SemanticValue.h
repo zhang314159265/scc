@@ -35,6 +35,7 @@
 #include "semantic_value/RelationalExpression.h"
 #include "semantic_value/AdditiveExpression.h"
 #include "semantic_value/SelectiveStatement.h"
+#include "semantic_value/MultiplicativeExpression.h"
 
 namespace scc {
 

@@ -390,21 +390,33 @@ shift_expression:
 
 additive_expression:
     multiplicative_expression {
-      assert($1.tag == SV_UNARY_EXPRESSION);
-      $$ = AdditiveExpression($1.unary_expression);
+      $$ = AdditiveExpression($1.multiplicative_expression);
     }
   | additive_expression '+' multiplicative_expression {
-      assert($3.tag == SV_UNARY_EXPRESSION);
-      $$ = $1.additive_expression.addItem(AdditiveOp_ADD, $3.unary_expression);
+      $$ = $1.additive_expression.addItem(AdditiveOp_ADD, $3.multiplicative_expression);
     }
   | additive_expression '-' multiplicative_expression {
-      assert($3.tag == SV_UNARY_EXPRESSION);
-      $$ = $1.additive_expression.addItem(AdditiveOp_SUB, $3.unary_expression);
+      $$ = $1.additive_expression.addItem(AdditiveOp_SUB, $3.multiplicative_expression);
     }
   ;
 
 multiplicative_expression:
-    cast_expression
+    cast_expression {
+      assert($1.tag == SV_UNARY_EXPRESSION);
+      $$ = MultiplicativeExpression($1.unary_expression);
+    }
+  | multiplicative_expression '*' cast_expression {
+      assert($3.tag == SV_UNARY_EXPRESSION);
+      $$ = $1.multiplicative_expression.addItem(MultiplicativeOp_MUL, $3.unary_expression);
+    }
+  | multiplicative_expression '/' cast_expression {
+      assert($3.tag == SV_UNARY_EXPRESSION);
+      $$ = $1.multiplicative_expression.addItem(MultiplicativeOp_DIV, $3.unary_expression);
+    }
+  | multiplicative_expression '%' cast_expression {
+      assert($3.tag == SV_UNARY_EXPRESSION);
+      $$ = $1.multiplicative_expression.addItem(MultiplicativeOp_MOD, $3.unary_expression);
+    }
   ;
 
 cast_expression:

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "MultiplicativeExpression.h"
+
 namespace scc {
 
 enum AdditiveOp {
@@ -21,10 +23,6 @@ static std::ostream &operator<<(std::ostream& os, const AdditiveOp &op) {
   return os;
 }
 
-#define MultiplicativeExpression UnaryExpression
-
 CreateLeftAssocExprChain(AdditiveExpression, MultiplicativeExpression, AdditiveOp);
-
-#undef MultiplicativeExpression
 
 }

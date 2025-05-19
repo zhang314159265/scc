@@ -58,6 +58,7 @@ llvm::Value *to_llir(Constant &con, LowerContext &LC);
 llvm::Value *to_llir(UnaryExpression &ue, LowerContext &LC);
 llvm::Value *to_llir(RelationalExpression &re, LowerContext &LC);
 llvm::Value *to_llir(AdditiveExpression &ae, LowerContext &LC);
+llvm::Value *to_llir(MultiplicativeExpression &me, LowerContext &LC);
 
 void to_llir(TranslationUnit& tu, LowerContext &LC) {
   for (auto &external_declaration : tu.items) {
@@ -518,6 +519,16 @@ void to_llir(SelectiveStatement &ss, LowerContext &LC) {
 
   // properly setup LC.B for later
   B.SetInsertPoint(nextBlock);
+}
+
+llvm::Value *to_llir(MultiplicativeExpression &me, LowerContext &LC) {
+  llvm::Value *result = to_llir(me.firstitem, LC);
+  for (auto& pair : me.pairlist) {
+    auto op = pair.first;
+    llvm::Value *rhs = to_llir(pair.second, LC);
+    result = handleMultiplicative(result, rhs, op, LC);
+  }
+  return result;
 }
 
 }
