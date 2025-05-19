@@ -1,39 +1,5 @@
 int printf(const char *, ...);
 
 int main(void) {
-  int a = 8, b = 5;
-  int c;
-  c = a % b;
-  printf("%d\n", c);
-  /*
-  double mat1[2][2] = {
-    { 2, 1 },
-    { 1, 1 }
-  };
-  double mat2[2][2] = {
-    { 3, 2},
-    { 2, 1}
-  }; 
-   */
-  /*
-  double mat1[2][2];
-  double mat2[2][2];
-  double matres[2][2];
-  int i, j, k;
-
-  for (i = 0; i < 2; ++i) {
-    for (j = 0; j < 2; ++j) {
-      matres[i][j] = 0;
-      for (k = 0; k < 2; ++k) {
-        matres[i][j] += mat1[i][k] * mat2[k][j];
-      }
-    }
-  }
-  printf("[[%.0f, %.0f], [%.0f, %.0f]]\n",
-    matres[0][0],
-    matres[0][1],
-    matres[1][0],
-    matres[1][1]);
-   */
   return 0;
 }

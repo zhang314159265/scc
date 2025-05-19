@@ -16,7 +16,10 @@ DIGIT [0-9]
 %%
 [ \t\r\n]+ { /* ignore spaces */ }
 [/][/].* { /* ignore comment */ }
-[/][*](.|\n)*[*][/] { /* ignore comment */ }
+[/][*]([^*]|[*][^/])*[*][/] {
+  // lex does not support non-greedy regulard expression.
+  // So we need a more complex one.
+}
 
 int { return TK_INT; }
 float { return TK_FLOAT; }

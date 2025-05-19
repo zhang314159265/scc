@@ -11,18 +11,22 @@ int main(void) {
    * [[ Fn+1, Fn ]   *   [[Fm+1, Fm,]  =    [[Fn+m+1,   Fn+m],
    *  [ Fn,   Fn-1 ]]     [Fm,   Fm-1]]      [Fn+m,     Fn+m-1]]
    */
-  double mat1[2][2] = {
-    // n = 2
-    { 2, 1 },
-    { 1, 1 }
-  };
-  double mat2[2][2] = {
-    // m = 3
-    { 3, 2},
-    { 2, 1}
-  };
+  double mat1[2][2];
+  double mat2[2][2];
   double matres[2][2];
   int i, j, k;
+
+  // n = 2
+  mat1[0][0] = 2;
+  mat1[0][1] = 1;
+  mat1[1][0] = 1;
+  mat1[1][1] = 1;
+
+  // m = 3
+  mat2[0][0] = 3;
+  mat2[0][1] = 2;
+  mat2[1][0] = 2;
+  mat2[1][1] = 1;
 
   for (i = 0; i < 2; ++i) {
     for (j = 0; j < 2; ++j) {
