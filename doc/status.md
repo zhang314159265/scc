@@ -1,9 +1,12 @@
 # Future Features
 - jit run llirapi/showmsg.cpp
+- unsupported syntax
+  - initializer for array/struct etc.
 
 # TODO
+- factorial <++++++++++
+  - handle parameter <==
 - try various example C problems for compiling!
-  - handle matmul
   - handle nqueen
   - handle prime sieve
   - handle calc24

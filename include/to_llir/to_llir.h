@@ -13,6 +13,7 @@ struct LoweredDeclaration {
   std::string name;
   llvm::Type *type;
   llvm::Value *initializer = nullptr;
+  std::vector<std::string> argNames;
 };
 
 struct LowerContext {
@@ -36,7 +37,7 @@ namespace scc {
 
 void to_llir(TranslationUnit& tu, LowerContext &LC);
 void to_llir(ExternalDeclaration& ed, LowerContext &LC);
-LoweredDeclaration to_llir(Declaration& d, LowerContext &LC);
+LoweredDeclaration to_llir(Declaration& d, LowerContext &LC, bool addToSymtable=true);
 LoweredDeclaration to_llir(DirectDeclarator &dd, llvm::Type *type, LowerContext &LC);
 LoweredDeclaration to_llir(Declarator &de, llvm::Type* type, LowerContext &LC);
 LoweredDeclaration to_llir(InitDeclarator &id, llvm::Type* type, LowerContext &LC);
@@ -82,6 +83,20 @@ void to_llir(ExternalDeclaration& ed, LowerContext &LC) {
       ld.name,
       M);
 
+    { // set argnames
+      auto& argNames = ld.argNames;
+      #if 0
+      std::cout << argNames.size() << std::endl;
+      F->dump();
+      #endif
+      assert(argNames.size() == F->arg_size());
+      for (int i = 0; i < F->arg_size(); ++i) {
+        auto &name = argNames[i];
+        assert(name.size() > 0);
+        F->getArg(i)->setName(name);
+      }
+    }
+
     llvm::LLVMContext &C = M.getContext();
     llvm::BasicBlock *BB = llvm::BasicBlock::Create(
       C,
@@ -101,16 +116,7 @@ void to_llir(ExternalDeclaration& ed, LowerContext &LC) {
     break;
   }
   case ExternalDeclaration_Declaration: {
-    auto loweredDeclaration = to_llir(ed.declaration, LC);
-    auto name = loweredDeclaration.name;
-    llvm::Type *type = loweredDeclaration.type;
-    if (type->isFunctionTy()) {
-      assert(name.size() > 0); 
-      M.getOrInsertFunction(
-        name,
-        (llvm::FunctionType*) type
-      );
-    }
+    to_llir(ed.declaration, LC);
     break;
   }
   default:
@@ -118,7 +124,7 @@ void to_llir(ExternalDeclaration& ed, LowerContext &LC) {
   }
 }
 
-LoweredDeclaration to_llir(Declaration& d, LowerContext &LC) {
+LoweredDeclaration to_llir(Declaration& d, LowerContext &LC, bool addToSymtable) {
   llvm::Module &M = *LC.M;
   
   llvm::Type *type = to_llir(d.declaration_specifiers, LC);
@@ -131,12 +137,42 @@ LoweredDeclaration to_llir(Declaration& d, LowerContext &LC) {
   LoweredDeclaration lowered_decl{std::string(), nullptr};
   for (auto &init_declarator : d.init_declarator_list.items) {
     lowered_decl = to_llir(init_declarator, type, LC);
-    if (LC.B) { // local variable
-      llvm::IRBuilder<> &B = *LC.B;
-      llvm::AllocaInst * alloca = B.CreateAlloca(lowered_decl.type, nullptr, lowered_decl.name);
-      // handle initializer
-      if (lowered_decl.initializer) {
-        handleStore(alloca, lowered_decl.initializer, LC);
+
+    // don't add to symtable yet for function parameter.
+    // We do this after we create the Function
+    if (!addToSymtable) {
+      assert(!lowered_decl.initializer);
+      continue;
+    }
+
+    if (lowered_decl.type->isFunctionTy()) {
+      assert(lowered_decl.name.size() > 0); 
+      M.getOrInsertFunction(
+        lowered_decl.name,
+        llvm::cast<llvm::FunctionType>(lowered_decl.type)
+      );
+    } else if (lowered_decl.name.size() > 0) {
+      if (LC.B) { // local variable
+        llvm::IRBuilder<> &B = *LC.B;
+        llvm::AllocaInst * alloca = B.CreateAlloca(lowered_decl.type, nullptr, lowered_decl.name);
+        // handle initializer
+        if (lowered_decl.initializer) {
+          handleStore(alloca, lowered_decl.initializer, LC);
+        }
+      } else { // global variable
+        llvm::Constant *init = nullptr;
+        if (lowered_decl.initializer) {
+          init = llvm::cast<llvm::Constant>(lowered_decl.initializer);
+        } else {
+          init = llvm::Constant::getNullValue(lowered_decl.type);
+        }
+        auto val = new llvm::GlobalVariable(
+          M,
+          lowered_decl.type,
+          false,
+          llvm::GlobalVariable::ExternalLinkage,
+          init,
+          lowered_decl.name);
       }
     }
   }
@@ -218,13 +254,15 @@ LoweredDeclaration to_llir(DirectDeclarator &dd, llvm::Type *type, LowerContext&
     DeclarationList &decl_list = decl_list_list[0];
     std::vector<llvm::Type*> argTypes;
     for (Declaration &decl : decl_list.items) {
-      LoweredDeclaration ld = to_llir(decl, LC);
-      // ld.name does not matter
+      LoweredDeclaration ld = to_llir(decl, LC, false);
       argTypes.push_back(ld.type);
+      lowered_decl.argNames.push_back(ld.name);
     }
 
     if (argTypes.size() == 1 && argTypes[0]->isVoidTy()) {
       argTypes.clear(); 
+      assert(lowered_decl.argNames[0].size() == 0);
+      lowered_decl.argNames.clear();
     }
 
     // create function type
@@ -507,14 +545,19 @@ void to_llir(SelectiveStatement &ss, LowerContext &LC) {
   { // handle true block
     B.SetInsertPoint(trueBlock);
     to_llir(ss.stmt1, LC);
-    B.CreateBr(nextBlock);
+
+    if (!shouldSkipBr(B)) {
+      B.CreateBr(nextBlock);
+    }
   }
 
   {
     // handle false block
     B.SetInsertPoint(falseBlock);
     to_llir(ss.stmt2, LC);
-    B.CreateBr(nextBlock);
+    if (!shouldSkipBr(B)) {
+      B.CreateBr(nextBlock);
+    }
   }
 
   // properly setup LC.B for later

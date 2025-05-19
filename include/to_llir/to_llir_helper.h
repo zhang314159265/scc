@@ -45,6 +45,19 @@ llvm::Type *getRealType(llvm::Value *val) {
     return inst->getResultElementType();
   }
 
+  if (llvm::isa<llvm::GlobalVariable>(val)) {
+    llvm::GlobalVariable *var = llvm::cast<llvm::GlobalVariable>(val);
+    return var->getValueType();
+  }
+
+  if (val->getType()->isPointerTy() && llvm::isa<llvm::ConstantExpr>(val)) {
+    // GEP upon a global array results in a ConstantExpr
+    llvm::ConstantExpr *ce = llvm::cast<llvm::ConstantExpr>(val);
+    if (auto *gepOp = llvm::dyn_cast<llvm::GEPOperator>(ce)) {
+      return gepOp->getResultElementType();
+    }
+  }
+
   return val->getType(); 
 }
 
@@ -59,9 +72,20 @@ llvm::Value *derefIfNeeded(llvm::Value *valueInp, LowerContext &LC) {
     llvm::GetElementPtrInst *inst = llvm::cast<llvm::GetElementPtrInst>(valueInp);
 
     return B.CreateLoad(inst->getResultElementType(), valueInp);
-  } else {
-    return valueInp;
+  } else if (llvm::isa<llvm::GlobalVariable>(valueInp)) {
+    llvm::IRBuilder<> &B = *LC.B;
+    llvm::GlobalVariable *var = llvm::cast<llvm::GlobalVariable>(valueInp);
+    if (!var->getValueType()->isArrayTy()) {
+      // don't deref an array type. This happens for string constaint
+      auto out = B.CreateLoad(var->getValueType(), valueInp);
+      return out;
+    }
+  } else if (valueInp->getType()->isPointerTy() && llvm::isa<llvm::ConstantExpr>(valueInp)) {
+    llvm::IRBuilder<> &B = *LC.B;
+    return B.CreateLoad(getRealType(valueInp), valueInp);
   }
+
+  return valueInp;
 }
 
 llvm::Value *handleMultiplicative(llvm::Value *lhs, llvm::Value *rhs, MultiplicativeOp op, LowerContext &LC) {
@@ -150,7 +174,10 @@ llvm::Value *lookupIdentifier(std::string &name, LowerContext &LC) {
     // lookup global variable
     found = M.getNamedValue(name);
   }
-  assert(found);
+  if (!found) {
+    std::cout << "Identifier " << name << " not found!" << std::endl;
+    assert(0);
+  }
   return found;
 }
 
@@ -186,22 +213,30 @@ bool handleCastIfPrintf(llvm::Function *function, std::vector<llvm::Value*> &arg
 }
 
 llvm::Value *handleImplicitCast(llvm::Value *val, llvm::Type *dstTy, LowerContext &LC) {
-  if (val->getType() == dstTy) {
+  llvm::Type *valTy = getRealType(val);
+  if (valTy == dstTy) {
+    return val;
+  }
+
+  // skip if dstTy is a opaque pointer
+  if (dstTy->isPointerTy()) {
     return val;
   }
 
   // i32 -> double
-  if (val->getType()->isIntegerTy(32) && dstTy->isFloatingPointTy()) {
+  if (valTy->isIntegerTy(32) && dstTy->isFloatingPointTy()) {
     llvm::IRBuilder<> &B = *LC.B;
     return B.CreateSIToFP(val, dstTy);
   }
 
   // double -> float
-  if (val->getType()->isDoubleTy() && dstTy->isFloatTy()) {
+  if (valTy->isDoubleTy() && dstTy->isFloatTy()) {
     llvm::IRBuilder<> &B = *LC.B;
     return B.CreateFPTrunc(val, dstTy);
   }
-
+  
+  valTy->dump();
+  dstTy->dump();
   assert(0);
 }
 
@@ -214,6 +249,15 @@ void handleCastForCall(llvm::Function *function, std::vector<llvm::Value*> &args
   for (int i = 0; i < args.size(); ++i) {
     args[i] = handleImplicitCast(args[i], funcTy->getParamType(i), LC);
   }
+}
+
+bool shouldSkipBr(llvm::IRBuilder<> &B) {
+  llvm::BasicBlock *BB = B.GetInsertBlock();
+  if (BB->size() > 0) {
+    llvm::Instruction &last = BB->back();
+    return llvm::isa<llvm::ReturnInst>(last);
+  }
+  return false;
 }
 
 }
