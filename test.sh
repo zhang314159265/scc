@@ -32,6 +32,7 @@ function testit() {
 testit showmsg "LLVM is cool!"
 testit sum "Sum is 5050"
 testit ifelse "d is 5"
+testit 1d_fp_arr "sqrt of 8 is 2.83"
 # testit ident_mat "sum is 10.000000"
 
 logprogress "SUMMARY: PASS $cnt TESTS"

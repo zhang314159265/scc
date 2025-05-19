@@ -11,7 +11,7 @@ scc:
 	# ./scc < inputs/misc.c
 	# false
 	clang++ -g $(CFLAGS) $(LDFLAGS) $(LLVMAPI_FLAGS) -Iinclude -ll -ly parser.cpp all.cpp -o scc
-	# process launch -i inputs/showmsg.c
+	# process launch -i inputs/misc.c
 	rm -f /tmp/gen.ll
 	# ./scc < inputs/sum.c
 	./scc < inputs/misc.c

@@ -20,6 +20,7 @@ DIGIT [0-9]
 
 int { return TK_INT; }
 float { return TK_FLOAT; }
+double { return TK_DOUBLE; }
 const { return TK_CONST; }
 volatile { return TK_VOLATILE; }
 unsigned { return TK_UNSIGNED; }

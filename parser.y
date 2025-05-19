@@ -17,6 +17,7 @@ using namespace scc;
 
 %token TK_INT
 %token TK_FLOAT
+%token TK_DOUBLE
 %token TK_CONST
 %token TK_VOLATILE
 %token TK_UNSIGNED
@@ -134,6 +135,7 @@ type_specifier:
   | TK_CHAR { $$ = TypeSpecifier::CHAR; }
   | TK_INT { $$ = TypeSpecifier::INT; }
   | TK_FLOAT { $$ = TypeSpecifier::FLOAT; }
+  | TK_DOUBLE { $$ = TypeSpecifier::DOUBLE; }
   | TK_VOID { $$ = TypeSpecifier::VOID; }
   ;
 
@@ -183,6 +185,10 @@ initializer:
 
 direct_declarator:
     TK_IDENTIFIER { $$ = DirectDeclarator($1.str); }
+  | direct_declarator '[' opt_constant_expression ']' {
+      assert($3.tag == SV_RELATIONAL_EXPRESSION);
+      $$ = $1.direct_declarator.addConstantExpression($3.relational_expression);
+    }
   | direct_declarator '(' parameter_type_list ')' {
       $$ = $1.direct_declarator.addDeclarationList($3.declaration_list);
     }
@@ -323,6 +329,14 @@ assignment_operator:
   | '=' { $$ = AssignmentOperator(AssignmentOperator::EQ); }
   ;
 
+opt_constant_expression:
+    constant_expression
+  | { assert(0); };
+
+constant_expression:
+    conditional_expression
+  ;
+
 conditional_expression:
     logical_or_expression
   ;
@@ -359,6 +373,10 @@ relational_expression:
   | relational_expression TK_LE shift_expression {
       assert($3.tag == SV_ADDITIVE_EXPRESSION);
       $$ = $1.relational_expression.addItem(RelationalOp_LE, $3.additive_expression);
+    }
+  | relational_expression '<' shift_expression {
+      assert($3.tag == SV_ADDITIVE_EXPRESSION);
+      $$ = $1.relational_expression.addItem(RelationalOp_LT, $3.additive_expression);
     }
   | relational_expression '>' shift_expression {
       assert($3.tag == SV_ADDITIVE_EXPRESSION);
@@ -406,6 +424,9 @@ postfix_expression:
     primary_expression { $$ = PostfixExpression($1.primary_expression); }
   | postfix_expression '(' opt_argument_expression_list ')' {
       $$ = $1.postfix_expression.addPostfix($3.argument_expression_list);
+    }
+  | postfix_expression '[' expression ']' {
+      $$ = $1.postfix_expression.addPostfix($3.expression);
     }
   ;
 

@@ -6,13 +6,9 @@ int main(void) {
   int i;
   int picked = 8;
 
-  /* 
-  ar[3] = 0.5;
-  printf("%f\n", ar[3]); 
-   */
   for (i = 0; i < 10; ++i) {
     ar[i] = sqrt(i);
   }
-  printf("sqrt of %d is %.2f\n", picked, ar[picked]); // 2.83  
+  printf("sqrt of %d is %.2f\n", picked, ar[picked]); // 2.83
   return 0;
 }

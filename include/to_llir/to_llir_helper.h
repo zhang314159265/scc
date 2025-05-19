@@ -4,12 +4,26 @@
 
 namespace scc {
 
+llvm::Type *getRealType(llvm::Value *val) {
+  if (llvm::isa<llvm::AllocaInst>(val)) {
+    llvm::AllocaInst *inst = llvm::cast<llvm::AllocaInst>(val);
+    return inst->getAllocatedType();
+  }
+
+  return val->getType(); 
+}
+
 llvm::Value *derefIfNeeded(llvm::Value *valueInp, LowerContext &LC) {
   if (llvm::isa<llvm::AllocaInst>(valueInp)) {
     llvm::IRBuilder<> &B = *LC.B;
     llvm::AllocaInst *inst = llvm::cast<llvm::AllocaInst>(valueInp);
 
     return B.CreateLoad(inst->getAllocatedType(), valueInp);
+  } else if (llvm::isa<llvm::GetElementPtrInst>(valueInp)) {
+    llvm::IRBuilder<> &B = *LC.B;
+    llvm::GetElementPtrInst *inst = llvm::cast<llvm::GetElementPtrInst>(valueInp);
+
+    return B.CreateLoad(inst->getResultElementType(), valueInp);
   } else {
     return valueInp;
   }
@@ -37,6 +51,8 @@ llvm::Value *handleRelational(llvm::Value *lhs, llvm::Value *rhs, RelationalOp o
   case RelationalOp_LE:
     // TODO this only works for signed integer?
     return B.CreateICmpSLE(lhs, rhs);
+  case RelationalOp_LT:
+    return B.CreateICmpSLT(lhs, rhs);
   case RelationalOp_GT:
     return B.CreateICmpSGT(lhs, rhs);
   default:
@@ -49,10 +65,15 @@ void handleStore(llvm::Value *dst, llvm::Value *val, LowerContext &LC) {
   llvm::IRBuilder<> &B = *LC.B;
 
   // double to float casting
-  if (val->getType()->isDoubleTy() && llvm::isa<llvm::Constant>(val)) {
+  if (val->getType()->isDoubleTy()) {
     llvm::AllocaInst *alloca = llvm::dyn_cast<llvm::AllocaInst>(dst);
     if (alloca && alloca->getAllocatedType()->isFloatTy()) {
       val = B.CreateFPTrunc(val, alloca->getAllocatedType());
+    }
+
+    llvm::GetElementPtrInst *gep = llvm::dyn_cast<llvm::GetElementPtrInst>(dst);
+    if (gep && gep->getResultElementType()->isFloatTy()) {
+      val = B.CreateFPTrunc(val, gep->getResultElementType());
     }
   }
   B.CreateStore(val, dst);
@@ -107,7 +128,8 @@ std::string handleStringEscape(const std::string &s) {
   return out;
 }
 
-void handleCastIfPrintf(llvm::Function *function, std::vector<llvm::Value*> &args, LowerContext &LC) {
+// return true if this is a call for printf
+bool handleCastIfPrintf(llvm::Function *function, std::vector<llvm::Value*> &args, LowerContext &LC) {
   // cast float arg to double for printf
   llvm::LLVMContext &C = *LC.C;
   llvm::IRBuilder<> &B = *LC.B;
@@ -118,6 +140,32 @@ void handleCastIfPrintf(llvm::Function *function, std::vector<llvm::Value*> &arg
         args[i] = B.CreateFPExt(arg, llvm::Type::getDoubleTy(C));
       }
     }
+    return true;
+  }
+  return false;
+}
+
+llvm::Value *handleImplicitCast(llvm::Value *val, llvm::Type *dstTy, LowerContext &LC) {
+  if (val->getType() == dstTy) {
+    return val;
+  }
+
+  // i32 -> double
+  if (val->getType()->isIntegerTy(32) && dstTy->isDoubleTy()) {
+    llvm::IRBuilder<> &B = *LC.B;
+    return B.CreateSIToFP(val, dstTy);
+  }
+  assert(0);
+}
+
+void handleCastForCall(llvm::Function *function, std::vector<llvm::Value*> &args, LowerContext &LC) {
+  auto funcTy = function->getFunctionType();
+  if (funcTy->isVarArg()) {
+    return;
+  }
+  assert(funcTy->getNumParams() == args.size());
+  for (int i = 0; i < args.size(); ++i) {
+    args[i] = handleImplicitCast(args[i], funcTy->getParamType(i), LC);
   }
 }
 

@@ -8,11 +8,15 @@ namespace scc {
 
 enum RelationalOp {
   RelationalOp_LE,
+  RelationalOp_LT,
   RelationalOp_GT,
 };
 
 static std::ostream &operator<<(std::ostream& os, const RelationalOp &op) {
   switch (op) {
+  case RelationalOp_LT:
+    os << "<";
+    break;
   case RelationalOp_LE:
     os << "<=";
     break;

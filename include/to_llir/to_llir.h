@@ -168,6 +168,8 @@ llvm::Type *to_llir(TypeSpecifier &ts, LowerContext& LC) {
     return llvm::Type::getInt32Ty(C);
   case FLOAT:
     return llvm::Type::getFloatTy(C);
+  case DOUBLE:
+    return llvm::Type::getDoubleTy(C);
   case CHAR:
     return llvm::Type::getInt8Ty(C);
   case VOID:
@@ -205,8 +207,12 @@ llvm::Type *to_llir(Pointer &pointer, llvm::Type *type) {
 LoweredDeclaration to_llir(DirectDeclarator &dd, llvm::Type *type, LowerContext& LC) {
   const std::string &name = dd.identifier;
   std::vector<DeclarationList> decl_list_list = dd.decl_list_list;
+  auto &constant_expressions = dd.constant_expressions;
 
-  if (decl_list_list.size() == 1) {
+  LoweredDeclaration lowered_decl = {name, type};
+
+  if (decl_list_list.size() > 0) {
+    assert(decl_list_list.size() == 1);
     // function declaration
     DeclarationList &decl_list = decl_list_list[0];
     std::vector<llvm::Type*> argTypes;
@@ -222,16 +228,23 @@ LoweredDeclaration to_llir(DirectDeclarator &dd, llvm::Type *type, LowerContext&
 
     // create function type
     llvm::FunctionType *funcType = llvm::FunctionType::get(
-      type,
+      lowered_decl.type,
       argTypes,
       decl_list.hasEllipsis
     );
-    return {name, funcType};
-  } else if (decl_list_list.size() == 0) {
-    return {name, type};
+    lowered_decl.type = funcType;
   }
 
-  assert(0);
+  if (constant_expressions.size() > 0) {
+    assert(constant_expressions.size() == 1);
+    llvm::Value *cvalptr = to_llir(*constant_expressions[0], LC);
+    lowered_decl.type = llvm::ArrayType::get(
+      lowered_decl.type,
+      llvm::cast<llvm::ConstantInt>(cvalptr)->getZExtValue()
+    );
+  }
+
+  return lowered_decl;
 }
 
 void to_llir(CompoundStatement &cs, LowerContext &LC) {
@@ -310,6 +323,7 @@ llvm::Value *to_llir(AssignmentExpression &ae, LowerContext &LC) {
 }
 
 llvm::Value *to_llir(PostfixExpression &pe, LowerContext &LC) {
+  llvm::LLVMContext &C = *LC.C;
   llvm::IRBuilder<> &B = *LC.B;
   llvm::Value *primary = to_llir(pe.primary_expression, LC);
 
@@ -319,21 +333,35 @@ llvm::Value *to_llir(PostfixExpression &pe, LowerContext &LC) {
 
   assert(pe.postfixList.size() == 1);
   auto &postfix = pe.postfixList[0];
-  assert(postfix.tag == PostfixExpression_CALL);
 
-  std::vector<llvm::Value *> args;
-  for (auto& assignmentExpr : postfix.argument_expression_list_ptr->items) {
-    args.push_back(derefIfNeeded(to_llir(assignmentExpr, LC), LC));
+  if (postfix.tag == PostfixExpression_CALL) {
+    std::vector<llvm::Value *> args;
+    for (auto& assignmentExpr : postfix.argument_expression_list_ptr->items) {
+      args.push_back(derefIfNeeded(to_llir(assignmentExpr, LC), LC));
+    }
+  
+    llvm::Type *primary_type = primary->getType();
+    auto ptr_type = llvm::cast<llvm::PointerType>(primary_type);
+    auto function = llvm::cast<llvm::Function>(primary);
+    auto functionType = function->getFunctionType();
+    llvm::FunctionCallee callee(functionType, primary);
+  
+    if (!handleCastIfPrintf(function, args, LC)) {
+      handleCastForCall(function, args, LC);
+    }
+    return B.CreateCall(callee, args);
+  } else if (postfix.tag == PostfixExpression_INDEX) {
+    llvm::Value *index = derefIfNeeded(to_llir(*postfix.expression, LC), LC);
+
+    // primary[index]
+    return B.CreateGEP(
+      getRealType(primary),
+      primary,
+      {llvm::ConstantInt::get(llvm::Type::getInt32Ty(C), 0), index}
+    );
+  } else {
+    assert(0 && "unsupported postfix");
   }
-
-  llvm::Type *primary_type = primary->getType();
-  auto ptr_type = llvm::cast<llvm::PointerType>(primary_type);
-  auto function = llvm::cast<llvm::Function>(primary);
-  auto functionType = function->getFunctionType();
-  llvm::FunctionCallee callee(functionType, primary);
-
-  handleCastIfPrintf(function, args, LC);
-  return B.CreateCall(callee, args);
 }
 
 llvm::Value *to_llir(PrimaryExpression &pe, LowerContext &LC) {
