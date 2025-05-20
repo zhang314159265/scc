@@ -58,6 +58,7 @@ llvm::Value *to_llir(PrimaryExpression &ce, LowerContext &LC);
 llvm::Value *to_llir(Constant &con, LowerContext &LC);
 llvm::Value *to_llir(UnaryExpression &ue, LowerContext &LC);
 llvm::Value *to_llir(RelationalExpression &re, LowerContext &LC);
+llvm::Value *to_llir(EqualityExpression &ee, LowerContext &LC);
 llvm::Value *to_llir(AdditiveExpression &ae, LowerContext &LC);
 llvm::Value *to_llir(MultiplicativeExpression &me, LowerContext &LC);
 
@@ -111,8 +112,10 @@ void to_llir(ExternalDeclaration& ed, LowerContext &LC) {
     LC.B = &B;
     LC.F = F;
     to_llir(def.compound_statement, LC);
+    removeEmptyBB(LC);
     LC.B = nullptr;
     LC.F = nullptr;
+
     break;
   }
   case ExternalDeclaration_Declaration: {
@@ -326,7 +329,10 @@ void to_llir(JumpStatement &js, LowerContext& LC) {
 
   switch (js.tag) {
   case JumpStatement_RETURN: {
-    llvm::Value *val = to_llir(js.expression, LC);  
+    llvm::Value *val = to_llir(js.expression, LC);
+    if (val) {
+      val = derefIfNeeded(val, LC);
+    }
     B.CreateRet(val);
     break;
   }
@@ -450,14 +456,25 @@ llvm::Value *to_llir(UnaryExpression &ue, LowerContext &LC) {
   case UnaryExpression_PREINC: {
     llvm::IRBuilder<> &B = *LC.B;
     llvm::Value *var = to_llir(*ue.unary_expression, LC);
-    llvm::AllocaInst *inst = llvm::cast<llvm::AllocaInst>(var);
-    llvm::Type *type = inst->getAllocatedType();
-    llvm::Value *val = B.CreateLoad(type, var);
+    llvm::Value *val = derefIfNeeded(var, LC);
+    
     // TODO handle floating point
-    llvm::Value *one = llvm::ConstantInt::get(type, 1);
+    llvm::Value *one = llvm::ConstantInt::get(val->getType(), 1);
     llvm::Value *result = B.CreateAdd(val, one);
     B.CreateStore(result, var);
     return result;
+  }
+  case UnaryExpression_UNARY_OP: {
+    switch (ue.unaryOp) {
+    case UnaryOperator_MINUS: {
+      llvm::IRBuilder<> &B = *LC.B;
+      llvm::Value *val = to_llir(*ue.cast_expression, LC);
+      return B.CreateNeg(val);
+    }
+    default:
+      assert(0);
+    }
+    assert(0);
   }
   default:
     assert(0);
@@ -515,6 +532,14 @@ void to_llir(IterationStatement &is, LowerContext &LC) {
 
   // setup LC.B properly for later
   B.SetInsertPoint(exit);
+  #if 0
+  // add a nop to avoid invalid IR like:
+  //   goto a
+  //   ...
+  //   a: <== empty block cause issues
+  //   b:
+  // CreateNop(B); // TODO: why this does not work? The instruction is not added
+  #endif
 }
 
 llvm::Value *to_llir(AdditiveExpression &ae, LowerContext &LC) {
@@ -528,40 +553,66 @@ llvm::Value *to_llir(AdditiveExpression &ae, LowerContext &LC) {
 }
 
 void to_llir(SelectiveStatement &ss, LowerContext &LC) {
-  // TODO only support ifelse so far
-  assert(ss.tag == SelectiveStatement_IFELSE);
   llvm::IRBuilder<> &B = *LC.B;
   llvm::LLVMContext &C = *LC.C;
   llvm::Function *F = LC.F;
 
-  // Create BasicBlocks
-  llvm::BasicBlock *trueBlock = llvm::BasicBlock::Create(C, "trueBlock", F);
-  llvm::BasicBlock *falseBlock = llvm::BasicBlock::Create(C, "falseBlock", F);
-  llvm::BasicBlock *nextBlock = llvm::BasicBlock::Create(C, "nextBlock", F);
-
-  llvm::Value *condval = to_llir(ss.expr, LC);
-  B.CreateCondBr(condval, trueBlock, falseBlock);
-
-  { // handle true block
-    B.SetInsertPoint(trueBlock);
-    to_llir(ss.stmt1, LC);
-
-    if (!shouldSkipBr(B)) {
-      B.CreateBr(nextBlock);
+  switch (ss.tag) {
+  case SelectiveStatement_IF: {
+    // Create BasicBlocks
+    llvm::BasicBlock *trueBlock = llvm::BasicBlock::Create(C, "trueBlock", F);
+    llvm::BasicBlock *nextBlock = llvm::BasicBlock::Create(C, "nextBlock", F);
+  
+    llvm::Value *condval = to_llir(ss.expr, LC);
+    B.CreateCondBr(condval, trueBlock, nextBlock);
+  
+    { // handle true block
+      B.SetInsertPoint(trueBlock);
+      to_llir(ss.stmt1, LC);
+  
+      if (!shouldSkipBr(B)) {
+        B.CreateBr(nextBlock);
+      }
     }
+  
+    // properly setup LC.B for later
+    B.SetInsertPoint(nextBlock);
+    break;
   }
-
-  {
-    // handle false block
-    B.SetInsertPoint(falseBlock);
-    to_llir(ss.stmt2, LC);
-    if (!shouldSkipBr(B)) {
-      B.CreateBr(nextBlock);
+  case SelectiveStatement_IFELSE: {
+    // Create BasicBlocks
+    llvm::BasicBlock *trueBlock = llvm::BasicBlock::Create(C, "trueBlock", F);
+    llvm::BasicBlock *falseBlock = llvm::BasicBlock::Create(C, "falseBlock", F);
+    llvm::BasicBlock *nextBlock = llvm::BasicBlock::Create(C, "nextBlock", F);
+  
+    llvm::Value *condval = to_llir(ss.expr, LC);
+    B.CreateCondBr(condval, trueBlock, falseBlock);
+  
+    { // handle true block
+      B.SetInsertPoint(trueBlock);
+      to_llir(ss.stmt1, LC);
+  
+      if (!shouldSkipBr(B)) {
+        B.CreateBr(nextBlock);
+      }
     }
+  
+    {
+      // handle false block
+      B.SetInsertPoint(falseBlock);
+      to_llir(ss.stmt2, LC);
+      if (!shouldSkipBr(B)) {
+        B.CreateBr(nextBlock);
+      }
+    }
+  
+    // properly setup LC.B for later
+    B.SetInsertPoint(nextBlock);
+    break;
   }
-
-  // properly setup LC.B for later
-  B.SetInsertPoint(nextBlock);
+  default:
+    assert(0);
+  }
 }
 
 llvm::Value *to_llir(MultiplicativeExpression &me, LowerContext &LC) {
@@ -572,6 +623,23 @@ llvm::Value *to_llir(MultiplicativeExpression &me, LowerContext &LC) {
     result = handleMultiplicative(result, rhs, op, LC);
   }
   return result;
+}
+
+llvm::Value *to_llir(EqualityExpression &ee, LowerContext &LC) {
+  llvm::Value *firstitem = to_llir(ee.firstitem, LC);
+  if (ee.pairlist.size() == 0) {
+    return firstitem;
+  }
+
+  if (ee.pairlist.size() == 1) {
+    auto pair = ee.pairlist[0];
+    llvm::Value *rhs = to_llir(pair.second, LC);
+    return handleEquality(firstitem, rhs, pair.first, LC);
+  }
+
+  std::cout << "Fail to handle equality expression" << std::endl;
+  std::cout << ee << std::endl;
+  assert(0);
 }
 
 }

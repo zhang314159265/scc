@@ -3,6 +3,7 @@
 #include <iostream>
 #include "llvm/IR/Type.h"
 #include "semantic_value/TypeCreator.h"
+#include "semantic_value/UnaryOperator.h"
 #include "semantic_value/TypeQualifier.h"
 #include "semantic_value/TypeSpecifier.h"
 #include "semantic_value/DeclarationSpecifiers.h"
@@ -36,6 +37,7 @@
 #include "semantic_value/AdditiveExpression.h"
 #include "semantic_value/SelectiveStatement.h"
 #include "semantic_value/MultiplicativeExpression.h"
+#include "semantic_value/EqualityExpression.h"
 
 namespace scc {
 

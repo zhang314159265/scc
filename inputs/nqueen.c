@@ -28,10 +28,11 @@ void bt(int step, int N) {
     for (j = 0; j < step; ++j) {
       if (step - j == abs(state[step] - state[j])) {
         valid = 0;
-        break;
+        // break; // TODO scc does not support break yet
       }
     }
-    if (valid) {
+    // if (valid) { // TODO workaround scc limitation which requires boolean expression
+    if (valid != 0) {
       bt(step + 1, N);
     }
 
@@ -40,6 +41,7 @@ void bt(int step, int N) {
     state[step] = state[i];
     state[i] = tmp;
   }
+  return; // TODO this is requires due to scc limitation
 }
 
 int nqueen(int N) {

@@ -8,6 +8,7 @@ namespace scc {
 
 enum RelationalOp {
   RelationalOp_LE,
+  RelationalOp_GE,
   RelationalOp_LT,
   RelationalOp_GT,
 };
@@ -19,6 +20,9 @@ static std::ostream &operator<<(std::ostream& os, const RelationalOp &op) {
     break;
   case RelationalOp_LE:
     os << "<=";
+    break;
+  case RelationalOp_GE:
+    os << ">=";
     break;
   case RelationalOp_GT:
     os << ">";

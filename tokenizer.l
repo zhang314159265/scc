@@ -36,6 +36,9 @@ else { return TK_ELSE; }
 
 [.][.][.] { return TK_ELLIPSIS; }
 [<][=] { return TK_LE; }
+[>][=] { return TK_GE; }
+[=][=] { return TK_EQ_EQ; }
+[!][=] { return TK_NOT_EQ; }
 [+][+] { return TK_INC; }
 [+][=] { return TK_PLUS_EQ; }
 

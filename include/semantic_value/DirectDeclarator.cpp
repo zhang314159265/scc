@@ -1,7 +1,7 @@
 #include <iostream>
 
 #include "DirectDeclarator.h"
-#include "RelationalExpression.h"
+#include "EqualityExpression.h"
 
 namespace scc {
 

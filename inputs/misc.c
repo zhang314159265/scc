@@ -1,5 +1,6 @@
-int puts(const char *s);
+int printf(const char *, ...);
+
 int main(void) {
-  puts("LLVM is cool!");
+  printf("Hello\n");
   return 0;
 }

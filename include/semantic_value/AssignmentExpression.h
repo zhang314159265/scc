@@ -2,19 +2,11 @@
 #include "PostfixExpression.h"
 #include "AssignmentOperator.h"
 #include "UnaryExpression.h"
-#include "RelationalExpression.h"
+#include "EqualityExpression.h"
 
 namespace scc {
 
-#if 0
-#define ConditionalExpression PostfixExpression
-
-CreateWrapperType(AssignmentExpression, ConditionalExpression, conditional_expression);
-
-#undef ConditionalExpression
-#endif
-
-#define ConditionalExpression RelationalExpression
+#define ConditionalExpression EqualityExpression
 
 class AssignmentExpression {
  public:

@@ -32,10 +32,13 @@ using namespace scc;
 %token TK_IDENTIFIER
 %token TK_ELLIPSIS
 %token TK_LE
+%token TK_GE
 %token TK_INC
 %token TK_PLUS_EQ
 %token TK_IF
 %token TK_ELSE
+%token TK_EQ_EQ
+%token TK_NOT_EQ
 
 %%
 
@@ -186,8 +189,8 @@ initializer:
 direct_declarator:
     TK_IDENTIFIER { $$ = DirectDeclarator($1.str); }
   | direct_declarator '[' opt_constant_expression ']' {
-      assert($3.tag == SV_RELATIONAL_EXPRESSION);
-      $$ = $1.direct_declarator.addConstantExpression($3.relational_expression);
+      assert($3.tag == SV_EQUALITY_EXPRESSION);
+      $$ = $1.direct_declarator.addConstantExpression($3.equality_expression);
     }
   | direct_declarator '(' parameter_type_list ')' {
       $$ = $1.direct_declarator.addDeclarationList($3.declaration_list);
@@ -274,6 +277,11 @@ selection_statement:
         $5.statement,
         $7.statement);
     }
+  | TK_IF '(' expression ')' statement {
+      $$ = SelectiveStatement(SelectiveStatement_IF,
+        $3.expression,
+        $5.statement);
+    }
   ;
 
 iteration_statement:
@@ -316,8 +324,8 @@ expression:
 
 assignment_expression:
     conditional_expression {
-      assert($1.tag == SV_RELATIONAL_EXPRESSION);
-      $$ = AssignmentExpression($1.relational_expression);
+      assert($1.tag == SV_EQUALITY_EXPRESSION);
+      $$ = AssignmentExpression($1.equality_expression);
     }
   | unary_expression assignment_operator assignment_expression {
       $$ = $3.assignment_expression.addItem($1.unary_expression, $2.assignment_operator);
@@ -325,8 +333,8 @@ assignment_expression:
   ;
 
 assignment_operator:
-    TK_PLUS_EQ { $$ = AssignmentOperator(AssignmentOperator::PLUS_EQ); }
-  | '=' { $$ = AssignmentOperator(AssignmentOperator::EQ); }
+    TK_PLUS_EQ { $$ = AssignmentOperator::PLUS_EQ; }
+  | '=' { $$ = AssignmentOperator::EQ; }
   ;
 
 opt_constant_expression:
@@ -362,7 +370,15 @@ and_expression:
   ;
 
 equality_expression:
-    relational_expression;
+    relational_expression {
+      $$ = EqualityExpression($1.relational_expression);
+    }
+  | equality_expression TK_EQ_EQ relational_expression {
+      $$ = $1.equality_expression.addItem(EqualityOp_EQ, $3.relational_expression);
+    }
+  | equality_expression TK_NOT_EQ relational_expression {
+      $$ = $1.equality_expression.addItem(EqualityOp_NEQ, $3.relational_expression);
+    }
   ;
 
 relational_expression:
@@ -373,6 +389,10 @@ relational_expression:
   | relational_expression TK_LE shift_expression {
       assert($3.tag == SV_ADDITIVE_EXPRESSION);
       $$ = $1.relational_expression.addItem(RelationalOp_LE, $3.additive_expression);
+    }
+  | relational_expression TK_GE shift_expression {
+      assert($3.tag == SV_ADDITIVE_EXPRESSION);
+      $$ = $1.relational_expression.addItem(RelationalOp_GE, $3.additive_expression);
     }
   | relational_expression '<' shift_expression {
       assert($3.tag == SV_ADDITIVE_EXPRESSION);
@@ -430,7 +450,16 @@ unary_expression:
   | TK_INC unary_expression {
       $$ = UnaryExpression(UnaryExpression_PREINC, $2.unary_expression);
     }
+  | unary_operator cast_expression {
+      assert($2.tag == SV_UNARY_EXPRESSION);
+      $$ = UnaryExpression($1.unary_operator, $2.unary_expression);
+    }
   ;
+
+unary_operator:
+  | '-' { $$ = UnaryOperator_MINUS;  }
+  ;
+
 
 postfix_expression:
     primary_expression { $$ = PostfixExpression($1.primary_expression); }

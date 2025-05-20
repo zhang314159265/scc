@@ -6,7 +6,7 @@ namespace scc {
 
 class DeclarationList;
 
-#define ConditionalExpression RelationalExpression
+#define ConditionalExpression EqualityExpression
 class ConditionalExpression;
 
 class DirectDeclarator {

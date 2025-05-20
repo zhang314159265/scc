@@ -17,6 +17,12 @@ BINARY_CREATOR_FACTORY(Add)
 BINARY_CREATOR_FACTORY(Sub)
 BINARY_CREATOR_FACTORY(Mul)
 
+llvm::Value *CreateNop(llvm::IRBuilder<> &B) {
+  llvm::LLVMContext &ctx = B.getContext();
+  llvm::Value *zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx), 0);
+  return B.CreateAdd(zero, zero);
+}
+
 llvm::Value *CreateDiv(llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &B) {
   if (lhs->getType()->isFloatingPointTy()) {
     return B.CreateFDiv(lhs, rhs);
@@ -118,11 +124,27 @@ llvm::Value *handleAdditive(llvm::Value *lhs, llvm::Value *rhs, AdditiveOp op, L
   }
 }
 
+llvm::Value *handleEquality(llvm::Value *lhs, llvm::Value *rhs, EqualityOp op, LowerContext &LC) {
+  llvm::IRBuilder<> &B = *LC.B;
+  lhs = derefIfNeeded(lhs, LC);
+  rhs = derefIfNeeded(rhs, LC);
+  switch (op) {
+  case EqualityOp_EQ:
+    return B.CreateICmpEQ(lhs, rhs);
+  case EqualityOp_NEQ:
+    return B.CreateICmpNE(lhs, rhs);
+  default:
+    assert(0);
+  }
+}
+
 llvm::Value *handleRelational(llvm::Value *lhs, llvm::Value *rhs, RelationalOp op, LowerContext &LC) {
   llvm::IRBuilder<> &B = *LC.B;
   lhs = derefIfNeeded(lhs, LC);
   rhs = derefIfNeeded(rhs, LC);
   switch (op) {
+  case RelationalOp_GE:
+    return B.CreateICmpSGE(lhs, rhs);
   case RelationalOp_LE:
     // TODO this only works for signed integer?
     return B.CreateICmpSLE(lhs, rhs);
@@ -258,6 +280,35 @@ bool shouldSkipBr(llvm::IRBuilder<> &B) {
     return llvm::isa<llvm::ReturnInst>(last);
   }
   return false;
+}
+
+void removeEmptyBB(LowerContext &LC) {
+  llvm::Function *F = LC.F;
+  llvm::Module &M = *LC.M;
+  llvm::LLVMContext &C = M.getContext();
+  assert(F);
+
+  for (auto itr = F->begin(); itr != F->end(); ) {
+    llvm::BasicBlock &BB = *itr;
+    if (BB.size() == 0 && BB.hasNPredecessors(0)) {
+      itr = BB.eraseFromParent();
+      continue;
+    }
+
+    // empty block with predecessors.
+    // TODO: Ideally we should move predecessors to the next block.
+    // Simply add a BR so far.
+    auto newitr = itr;
+    ++newitr;
+    if (BB.size() == 0 && newitr != F->end()) {
+      // create a new builder
+      llvm::IRBuilder<> B(C);
+      B.SetInsertPoint(&BB);
+      B.CreateBr(&(*newitr));
+    }
+
+    ++itr;
+  }
 }
 
 }

@@ -36,6 +36,6 @@ testit 1d_fp_arr "sqrt of 8 is 2.83"
 testit ident_mat "sum is 10.000000"
 testit matmul "[[8, 5], [5, 3]]"
 testit factorial "24"
-# testit nqueen "8 queen solution: 92"
+testit nqueen "8 queen solution: 92"
 
 logprogress "SUMMARY: PASS $cnt TESTS"
