@@ -1,6 +1,13 @@
 LLVM_ROOT := llvm-project
 LLVM_CONFIG := $(LLVM_ROOT)/build/bin/llvm-config
+
+ifeq ($(USE_LLOPT), 1)
+LLVMAPI_FLAGS := `$(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core passes`
+else
 LLVMAPI_FLAGS := `$(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core`
+USE_LLOPT := 0
+endif
+
 CFLAGS :=
 LDFLAGS := -L /opt/homebrew/Cellar/zstd/1.5.7/lib
 
@@ -10,7 +17,7 @@ scc:
 	# clang++ $(CFLAGS) $(LDFLAGS) $(LLVMAPI_FLAGS) -Iinclude -ll -DSTANDALONE_TOKENIZER tokenizer.cpp all.cpp -o scc
 	# ./scc < inputs/misc.c
 	# false
-	clang++ -g $(CFLAGS) $(LDFLAGS) $(LLVMAPI_FLAGS) -Iinclude -ll -ly parser.cpp all.cpp -o scc
+	clang++ -g $(CFLAGS) $(LDFLAGS) $(LLVMAPI_FLAGS) -Iinclude -ll -ly parser.cpp all.cpp -o scc -DUSE_LLOPT=$(USE_LLOPT)
 	# process launch -i inputs/misc.c
 	rm -f /tmp/gen.ll
 	# ./scc < inputs/sum.c

@@ -5,6 +5,7 @@
 #include "llvm/IR/Type.h"
 #include "semantic_value/TranslationUnit.h"
 #include "to_llir/to_llir.h"
+#include "opt/opt.h"
 
 namespace scc {
 
@@ -17,6 +18,7 @@ void post_parse(TranslationUnit& tu) {
     .M = &M,
   };
   to_llir(tu, LC);
+  optimize(M);
 
   M.print(llvm::errs(), NULL);
   const std::string &path = "/tmp/gen.ll";
