@@ -20,5 +20,8 @@
 
 # TODO
 - create some classical compiler passes myself upon llir 
-  - try the passes mentioned in the dragon book
-
+  - mem2reg
+  - dce
+  - cse
+  - try the passes mentioned in the dragon book (DFA)
+   

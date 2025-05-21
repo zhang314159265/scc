@@ -20,9 +20,8 @@ scc:
 	clang++ -g $(CFLAGS) $(LDFLAGS) $(LLVMAPI_FLAGS) -Iinclude -ll -ly parser.cpp all.cpp -o scc -DUSE_LLOPT=$(USE_LLOPT)
 	# process launch -i inputs/misc.c
 	rm -f /tmp/gen.ll
-	# ./scc < inputs/sum.c
 	./scc < inputs/misc.c
-	# ./scc < inputs/showmsg.c
+	# ./scc < inputs/saved_misc/store_load_print.c
 	# false
 	clang++ /tmp/gen.ll
 	./a.out

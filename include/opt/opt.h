@@ -2,6 +2,7 @@
 
 #include "llvm/IR/Module.h"
 #include "llvm_opt.h"
+#include "Mem2RegPass.h"
 
 namespace scc {
 
@@ -13,8 +14,7 @@ void optimize(llvm::Module &M) {
 
 void optimize(llvm::Module &M) {
   if (getenv("OPT")) {
-    M.dump();
-    assert(0);
+    Mem2RegPass().run(M);
   }
 }
 
