@@ -3,6 +3,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm_opt.h"
 #include "Mem2RegPass.h"
+#include "InstCombinePass.h"
 
 namespace scc {
 
@@ -14,7 +15,12 @@ void optimize(llvm::Module &M) {
 
 void optimize(llvm::Module &M) {
   if (getenv("OPT")) {
-    Mem2RegPass().run(M);
+    for (auto& F : M) {
+      if (!F.isDeclaration()) {
+        Mem2RegPass().run(F);
+        InstCombinePass().run(F);
+      }
+    }
   }
 }
 
