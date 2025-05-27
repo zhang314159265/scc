@@ -4,12 +4,14 @@ LLVM_CONFIG := $(LLVM_ROOT)/build/bin/llvm-config
 ifeq ($(USE_LLOPT), 1)
 LLVMAPI_FLAGS := `$(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core passes`
 else
-LLVMAPI_FLAGS := `$(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core`
+LLVMAPI_FLAGS := `$(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core irreader support`
 USE_LLOPT := 0
 endif
 
 CFLAGS :=
 LDFLAGS := -L /opt/homebrew/Cellar/zstd/1.5.7/lib
+
+first: scc
 
 scc:
 	lex -o tokenizer.cpp tokenizer.l
@@ -21,15 +23,22 @@ scc:
 	# process launch -i inputs/misc.c
 	rm -f /tmp/gen.ll
 	./scc < inputs/misc.c
-	# ./scc < inputs/saved_misc/store_load_print.c
+	# ./scc < inputs/saved_misc/constant_folding_example.c
 	# false
 	clang++ /tmp/gen.ll
 	./a.out
 
-.PHONY: test scc
+opt:
+	clang++ $(CFLAGS) $(LDFLAGS) $(LLVMAPI_FLAGS) -Iinclude opt.cpp -o opt
+	./opt llinputs/reaching_definition.ll
+
+.PHONY: test scc opt
 
 test:
 	./test.sh
+
+test_opt:
+	./test_opt.sh
   
 genllir:
 	clang -S -emit-llvm inputs/sum.c -o /tmp/sum.ll
