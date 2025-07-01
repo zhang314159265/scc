@@ -11,7 +11,7 @@
 
 namespace dragon_book {
 
-using ValueType = std::unordered_set<llvm::StoreInst*>;
+using ValueTypeRD = std::unordered_set<llvm::StoreInst*>;
 using VarToStoresType = std::unordered_map<std::string, std::vector<llvm::StoreInst*>>;
 using StoreToNameType = std::unordered_map<llvm::StoreInst*, std::string>;
 
@@ -29,7 +29,7 @@ std::unordered_set<llvm::StoreInst*> getKillSetForSingleStore(llvm::StoreInst *s
   return killSet;
 }
 
-void setupGenKill(DFAForward<ValueType> &dfa, StoreToNameType &storeToName) {
+void setupGenKill(DFAForward<ValueTypeRD> &dfa, StoreToNameType &storeToName) {
   // group stores for each variable
   VarToStoresType varToStores;
 
@@ -53,8 +53,8 @@ void setupGenKill(DFAForward<ValueType> &dfa, StoreToNameType &storeToName) {
   auto &bbToGen = dfa.bbToGen;
   auto &bbToKill = dfa.bbToKill;
   for (llvm::BasicBlock &BB : dfa.F) {
-    ValueType accKill;
-    ValueType accGen;
+    ValueTypeRD accKill;
+    ValueTypeRD accGen;
 
     for (llvm::Instruction &I : BB) {
       llvm::StoreInst *store = llvm::dyn_cast<llvm::StoreInst>(&I);
@@ -75,7 +75,7 @@ void setupGenKill(DFAForward<ValueType> &dfa, StoreToNameType &storeToName) {
   }
 }
 
-std::string valueToStrRD(ValueType val, void *arg) {
+std::string valueToStrRD(ValueTypeRD val, void *arg) {
   assert(arg);
   StoreToNameType &storeToName = *(StoreToNameType *) arg;
   std::stringstream ss;
@@ -93,7 +93,7 @@ std::string valueToStrRD(ValueType val, void *arg) {
 
 void analyzeReachingDefinition(llvm::Module &M) {
   llvm::errs() << "analyze reaching definition\n";
-  DFAForward<ValueType> dfa(M, {}, {}, valueToStrRD, nullptr);
+  DFAForward<ValueTypeRD> dfa(M, {}, {}, valueToStrRD, nullptr);
 
   // give each store a sequential name
   StoreToNameType storeToName;

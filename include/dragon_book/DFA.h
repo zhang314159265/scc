@@ -25,6 +25,17 @@ ValueType joinFuncUnion(ValueType lhs, ValueType rhs) {
   return out;
 }
 
+template <typename ValueType>
+ValueType joinFuncIntersect(ValueType lhs, ValueType rhs) {
+  ValueType out;
+  for (auto &lhsVal : lhs) {
+    if (rhs.count(lhsVal) > 0) {
+      out.insert(lhsVal);
+    }
+  }
+  return out;
+}
+
 // forward
 template <typename ValueType>
 class DFAForward {
@@ -94,6 +105,14 @@ class DFAForward {
     }
   }
 
+  void dumpValue(ValueType &val) {
+    if (valueToStrFunc) {
+      llvm::errs() << valueToStrFunc(val, valueToStrArg);
+    } else {
+      llvm::errs() << "(missing valueToStrFunc)";
+    }
+  }
+
   void dumpGenKill() {
     for (llvm::BasicBlock &BB : F) {
       ValueType genSet = bbToGen[&BB];
@@ -101,10 +120,10 @@ class DFAForward {
   
       llvm::errs() << BB.getName() << ":\n";
       llvm::errs() << "  gen:";
-      llvm::errs() << valueToStrFunc(genSet, valueToStrArg);
+      dumpValue(genSet);
       llvm::errs() << "\n";
       llvm::errs() << "  kill:";
-      llvm::errs() << valueToStrFunc(killSet, valueToStrArg);
+      dumpValue(killSet);
       llvm::errs() << "\n";
     }
   }
@@ -115,10 +134,10 @@ class DFAForward {
       auto &outSet = bbToOut[&BB];
   
       llvm::errs() << BB.getName() << " in:";
-      llvm::errs() << valueToStrFunc(inSet, valueToStrArg);
+      dumpValue(inSet);
       llvm::errs() << "\n";
       llvm::errs() << BB.getName() << " out:";
-      llvm::errs() << valueToStrFunc(outSet, valueToStrArg);
+      dumpValue(outSet);
       llvm::errs() << "\n";
     }
   }

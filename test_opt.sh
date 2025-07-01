@@ -42,5 +42,24 @@ function test_reaching_definition() {
   logprogress "PASS ${FUNCNAME[0]}"
 }
 
+function test_dominator_tree() {
+  ./opt dominator_tree llinputs/dominator_tree.ll >$OUT_FILE_NAME 2>&1
+
+  check_pattern "^b1 has no dominator$"
+  check_pattern "^b2 has imm dom b1$"
+  check_pattern "^b3 has imm dom b1$"
+  check_pattern "^b4 has imm dom b3$"
+  check_pattern "^b5 has imm dom b4$"
+  check_pattern "^b6 has imm dom b4$"
+  check_pattern "^b7 has imm dom b4$"
+  check_pattern "^b8 has imm dom b7$"
+  check_pattern "^b9 has imm dom b8$"
+  check_pattern "^b10 has imm dom b8$"
+
+  logprogress "PASS ${FUNCNAME[0]}"
+
+}
+
 test_reaching_definition
+test_dominator_tree
 logprogress "PASS ALL"
