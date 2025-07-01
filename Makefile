@@ -11,7 +11,7 @@ endif
 CFLAGS :=
 LDFLAGS := -L /opt/homebrew/Cellar/zstd/1.5.7/lib
 
-first: scc
+first: opt
 
 scc:
 	lex -o tokenizer.cpp tokenizer.l
@@ -30,7 +30,8 @@ scc:
 
 opt:
 	clang++ $(CFLAGS) $(LDFLAGS) $(LLVMAPI_FLAGS) -Iinclude opt.cpp -o opt
-	./opt llinputs/reaching_definition.ll
+	./opt dominator_tree llinputs/dominator_tree.ll
+	# ./opt reaching_definition llinputs/reaching_definition.ll
 
 .PHONY: test scc opt
 
@@ -38,6 +39,7 @@ test:
 	./test.sh
 
 test_opt:
+	make opt
 	./test_opt.sh
   
 genllir:

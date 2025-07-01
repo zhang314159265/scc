@@ -17,3 +17,7 @@ This doc describes implemetations for the passes described in dragon book ch9: M
   - done for 9.6.1 dominators
 - 9.7 Region based analysis
 - 9.8 Symbolic Analysis
+
+# TODO
+- implement dominator tree analysis with data flow analysis
+- compute immediate dominator (useful to derive the dominator tree)

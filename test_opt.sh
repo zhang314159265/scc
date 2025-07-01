@@ -20,7 +20,7 @@ function check_pattern() {
 }
 
 function test_reaching_definition() {
-  ./opt llinputs/reaching_definition.ll >$OUT_FILE_NAME 2>&1
+  ./opt reaching_definition llinputs/reaching_definition.ll >$OUT_FILE_NAME 2>&1
   check_pattern "^entry in:$"
   check_pattern "^entry out:$"
 

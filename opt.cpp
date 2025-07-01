@@ -7,10 +7,12 @@
 #include "llvm/Support/SourceMgr.h"
 
 #include "dragon_book/ReachingDefinition.h"
+#include "dragon_book/DominatorTreeAnalysis.h"
 
 int main(int argc, char **argv) {
-  assert(argc == 2);
-  const char *irpath = argv[1];
+  assert(argc == 3);
+  std::string cmd(argv[1]);
+  const char *irpath = argv[2];
 
   llvm::LLVMContext C;
   llvm::SMDiagnostic err;
@@ -25,6 +27,13 @@ int main(int argc, char **argv) {
 
   M.dump();
 
-  dragon_book::analyzeReachingDefinition(M);
+  if (cmd == "reaching_definition") {
+    dragon_book::analyzeReachingDefinition(M);
+  } else if (cmd == "dominator_tree") {
+    dragon_book::analyzeDominatorTree(M);
+  } else {
+    llvm::errs() << "Unrecognized command " << cmd << "\n";
+    return -1;
+  }
   return 0;
 }

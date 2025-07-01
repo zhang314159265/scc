@@ -1,125 +1,19 @@
+#pragma once
+
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/CFG.h"
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
+#include <sstream>
 #include <set>
+#include "dragon_book/DFA.h"
 
 namespace dragon_book {
 
-using BBToStoreSetType = std::unordered_map<llvm::BasicBlock *, std::unordered_set<llvm::StoreInst*>>;
+using ValueType = std::unordered_set<llvm::StoreInst*>;
 using VarToStoresType = std::unordered_map<std::string, std::vector<llvm::StoreInst*>>;
-
-struct ReachingDefinitionContext {
-  llvm::Function *F;
-  BBToStoreSetType bbToGen;
-  BBToStoreSetType bbToKill;
-  std::unordered_map<llvm::StoreInst*, std::string> storeToName;
-  BBToStoreSetType bbToIn;
-  BBToStoreSetType bbToOut;
-};
-
-void iterateUntilFix(ReachingDefinitionContext &RDC) {
-  auto &F = *RDC.F;
-  auto &bbToIn = RDC.bbToIn;
-  auto &bbToOut = RDC.bbToOut;
-  auto &bbToGen = RDC.bbToGen;
-  auto &bbToKill = RDC.bbToKill;
-
-  llvm::BasicBlock *entry = &F.front();
-  assert(entry->getName().str() == "entry");
-
-  llvm::BasicBlock *exit = &F.back();
-  assert(exit->getName().str() == "exit");
-
-  // out[ENTRY] = empty
-  bbToOut[entry].clear();
-  for (auto &BB : F) {
-    if (&BB != entry) {
-      bbToOut[&BB].clear();
-    }
-  }
-
-  bool changed = true;
-  int iter_idx = 0;
-  while (changed) {
-    llvm::errs() << "Iteration " << ++iter_idx << "\n";
-    changed = false;
-    for (auto &BB : F) {
-      if (&BB == entry) {
-        continue;
-      }
-      // join
-      bbToIn[&BB].clear();
-      for (auto pred : llvm::predecessors(&BB)) {
-        bbToIn[&BB].insert(bbToOut[pred].begin(), bbToOut[pred].end());
-      }
-
-      // transfer
-      std::unordered_set<llvm::StoreInst*> newOut;
-      newOut = bbToGen[&BB];
-      std::unordered_set<llvm::StoreInst*> in_except_kill;
-      for (llvm::StoreInst* store : bbToIn[&BB]) {
-        if (bbToKill[&BB].count(store) == 0) {
-          in_except_kill.insert(store);
-        }
-      }
-      newOut.insert(in_except_kill.begin(), in_except_kill.end());
-      if (newOut != bbToOut[&BB]) {
-        changed = true;
-      }
-      bbToOut[&BB] = newOut;
-    }
-  }
-}
-
-void dumpStoreSet(std::unordered_set<llvm::StoreInst *> stores, ReachingDefinitionContext &RDC) {
-  std::set<std::string> names; // use set for ordering
-  for (auto store : stores) {
-    names.insert(RDC.storeToName[store]);
-  }
-  for (auto name : names) {
-    llvm::errs() << " " << name;
-  }
-}
-
-void dumpGenKillForEachBB(ReachingDefinitionContext &RDC) {
-  llvm::Function &F = *RDC.F;
-  auto &bbToGen = RDC.bbToGen;
-  auto &bbToKill = RDC.bbToKill;
-  auto &storeToName = RDC.storeToName;
-
-  for (llvm::BasicBlock &BB : F) {
-    std::unordered_set<llvm::StoreInst*> genSet = bbToGen[&BB];
-    std::unordered_set<llvm::StoreInst*> killSet = bbToKill[&BB];
-
-    llvm::errs() << BB.getName() << ":\n";
-    llvm::errs() << "  gen:";
-    dumpStoreSet(genSet, RDC);
-    llvm::errs() << "\n";
-    llvm::errs() << "  kill:";
-    dumpStoreSet(killSet, RDC);
-    llvm::errs() << "\n";
-  }
-}
-
-void dumpCFAResult(ReachingDefinitionContext &RDC) {
-  llvm::Function &F = *RDC.F;
-  auto &bbToIn = RDC.bbToIn;
-  auto &bbToOut = RDC.bbToOut;
-
-  for (auto &BB : F) {
-    auto &inSet = bbToIn[&BB];
-    auto &outSet = bbToOut[&BB];
-
-    llvm::errs() << BB.getName() << " in:";
-    dumpStoreSet(inSet, RDC);
-    llvm::errs() << "\n";
-    llvm::errs() << BB.getName() << " out:";
-    dumpStoreSet(outSet, RDC);
-    llvm::errs() << "\n";
-  }
-}
+using StoreToNameType = std::unordered_map<llvm::StoreInst*, std::string>;
 
 std::unordered_set<llvm::StoreInst*> getKillSetForSingleStore(llvm::StoreInst *store, VarToStoresType& varToStores) {
   std::string name = store->getOperand(1)->getName().str();
@@ -135,21 +29,11 @@ std::unordered_set<llvm::StoreInst*> getKillSetForSingleStore(llvm::StoreInst *s
   return killSet;
 }
 
-void analyzeReachingDefinition(llvm::Module &M) {
-  llvm::errs() << "analyze reaching definition\n";
-  ReachingDefinitionContext RDC;
-  assert(M.getFunctionList().size() == 1);
-
-  llvm::Function &F = *M.begin();
-  RDC.F = &F;
-
-  // give each store a sequential name
-  auto &storeToName = RDC.storeToName;
-
+void setupGenKill(DFAForward<ValueType> &dfa, StoreToNameType &storeToName) {
   // group stores for each variable
   VarToStoresType varToStores;
 
-  for (llvm::BasicBlock &BB : F) {
+  for (llvm::BasicBlock &BB : dfa.F) {
     // llvm::errs() << BB.getName() << "\n";
     for (llvm::Instruction &I : BB) {
       if (llvm::dyn_cast<llvm::StoreInst>(&I)) {
@@ -166,11 +50,11 @@ void analyzeReachingDefinition(llvm::Module &M) {
   }
 
   // calculate gen/kill set for each basic block except entry and exit
-  BBToStoreSetType &bbToGen = RDC.bbToGen;
-  BBToStoreSetType &bbToKill = RDC.bbToKill;
-  for (llvm::BasicBlock &BB : F) {
-    std::unordered_set<llvm::StoreInst*> accKill;
-    std::unordered_set<llvm::StoreInst*> accGen;
+  auto &bbToGen = dfa.bbToGen;
+  auto &bbToKill = dfa.bbToKill;
+  for (llvm::BasicBlock &BB : dfa.F) {
+    ValueType accKill;
+    ValueType accGen;
 
     for (llvm::Instruction &I : BB) {
       llvm::StoreInst *store = llvm::dyn_cast<llvm::StoreInst>(&I);
@@ -189,12 +73,38 @@ void analyzeReachingDefinition(llvm::Module &M) {
     bbToGen[&BB] = accGen;
     bbToKill[&BB] = accKill;
   }
+}
+
+std::string valueToStrRD(ValueType val, void *arg) {
+  assert(arg);
+  StoreToNameType &storeToName = *(StoreToNameType *) arg;
+  std::stringstream ss;
+
+  std::set<std::string> names; // use set for ordering
+  for (auto elem : val) {
+    names.insert(storeToName[elem]);
+  }
+  for (auto name : names) {
+    ss << " " << name;
+  }
+
+  return ss.str();
+}
+
+void analyzeReachingDefinition(llvm::Module &M) {
+  llvm::errs() << "analyze reaching definition\n";
+  DFAForward<ValueType> dfa(M, {}, {}, valueToStrRD, nullptr);
+
+  // give each store a sequential name
+  StoreToNameType storeToName;
+  setupGenKill(dfa, storeToName);
+  dfa.valueToStrArg = (void *) &storeToName;
 
   // uncomment for debugging
-  // dumpGenKillForEachBB(RDC);
+  // dfa.dumpGenKill();
 
-  iterateUntilFix(RDC);
-  dumpCFAResult(RDC);
+  dfa.iterateUntilFix();
+  dfa.dumpResult();
 }
 
 }
